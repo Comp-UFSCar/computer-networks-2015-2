@@ -2,7 +2,6 @@ CGI Examples
     http://www.tutorialspoint.com/python/python_cgi_programming.htm
     https://wiki.python.org/moin/CgiScripts
 Standalone Web Servers
-    https://docs.python.org/2/library/socketserver.html
     https://docs.python.org/2/library/simplehttpserver.html
     https://wiki.python.org/moin/BaseHttpServer
 Configuring Apache for CGI
@@ -12,3 +11,7 @@ XAMPP and CGI Python
     http://stackoverflow.com/questions/8363247/python-xampp-on-windows-how-to
     https://mycsmanual.wordpress.com/2011/08/09/how-to-make-xampp-handle-cgi-applications-written-in-python/
     http://www.elvenware.com/charlie/development/web/Python/Xampp.html
+Sockets
+    https://docs.python.org/2/library/socketserver.html
+    https://docs.python.org/2/library/socket.html
+    https://docs.python.org/2/howto/sockets.html
