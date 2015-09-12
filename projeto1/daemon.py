@@ -7,13 +7,8 @@ __author__ = 'Thales Menato and Thiago Nogueira'
 #
 
 import SocketServer
-from threading import Thread
-import os
 import socket
 import sys
-if os.name != "nt":
-    import fcntl
-    import struct
 from backend import Protocol
 import commands
 
