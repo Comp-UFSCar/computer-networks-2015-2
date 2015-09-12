@@ -7,6 +7,7 @@ __author__ = 'Thales Menato and Thiago Nogueira'
 #
 
 import SocketServer
+from threading import Thread
 import os
 import socket
 import sys
@@ -16,48 +17,34 @@ if os.name != "nt":
 from backend import Protocol
 import commands
 
-# module for getting the lan ip address of the computer
-class IPGetter:
-    # This solution was found at - http://stackoverflow.com/questions/166506/finding-local-ip-addresses-using-pythons-stdlib
-    # and it was suggested by user 'smerlin' ( http://stackoverflow.com/users/231717/smerlin )
-    @staticmethod
-    def get_interface_ip(ifname):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s',
-                                ifname[:15]))[20:24])
+class MyHandler(SocketServer.BaseRequestHandler):
 
-    @staticmethod
-    def get_lan_ip():
-        ip = socket.gethostbyname(socket.gethostname())
-        if ip.startswith("127.") and os.name != "nt":
-            interfaces = ["eth0","eth1","eth2","wlan0","wlan1","wifi0","ath0","ath1","ppp0"]
-            for ifname in interfaces:
-                try:
-                    ip = IPGetter.get_interface_ip(ifname)
-                    break
-                except IOError:
-                    pass
-        return ip
+    # Buffer code example
+        # while True:
+        #     if data:
+        #         print 'sending data back to the client'
+        #         self.request.send(data)
+        #     else:
+        #         print "no more data from ", self.client_address
+        #         break
 
-
-class MyUDPHandler(SocketServer.BaseRequestHandler):
-    # where:
-#   1 - "ps"
-#   2 - "df"
-#   3 - "finger"
-#   4 - "uptime"
-
-    def response_ps(self, socket, command, client_address):
-        socket.sendto(Protocol().createResponse(command, str(commands.getoutput("ps"))), client_address)
-
-    def response_df(self, socket, command, client_address):
-        socket.sendto(Protocol().createResponse(command, str(commands.getoutput("df"))), client_address)
-
-    def response_finger(self, socket, command, client_address):
-        socket.sendto(Protocol().createResponse(command, str(commands.getoutput("finger"))), client_address)
-
-    def response_uptime(self, socket, command, client_address):
-        socket.sendto(Protocol().createResponse(command, str(commands.getoutput("uptime"))), client_address)
+    # Responses for each command: 'ps', 'df', 'finger' and 'uptime'
+    def response_ps(self, command):
+        command.pop(0)
+        args = " ".join(command)
+        self.request.send(Protocol().createResponse("1", str(commands.getoutput("ps " + args))))
+    def response_df(self, command):
+        command.pop(0)
+        args = " ".join(command)
+        self.request.send(Protocol().createResponse("2", str(commands.getoutput("df " + args))))
+    def response_finger(self, command):
+        command.pop(0)
+        args = " ".join(command)
+        self.request.send(Protocol().createResponse("3", str(commands.getoutput("finger " + args))))
+    def response_uptime(self, command):
+        command.pop(0)
+        args = " ".join(command)
+        self.request.send(Protocol().createResponse("4", str(commands.getoutput("uptime " + args))))
 
     options = {
         "1" : response_ps,
@@ -66,29 +53,51 @@ class MyUDPHandler(SocketServer.BaseRequestHandler):
         "4" : response_uptime,
     }
 
-    def handle(self):
-        data = self.request[0].strip()
-        socket = self.request[1]
-        print "Received {} from {}".format(data, self.client_address[0])
-
-        #TODO: verificar se o comando do request nao eh malicioso
-        data = str(data).split()
-
-        if str(data[0]) in ["REQUEST"]:
-            self.options.get(data[1])(self, socket, data[1], self.client_address)
-
+    def isValid(self, data):
+        #Verify malicious inputs like "|", ";", ">", so they're not executed
+        if "|" in data or ";" in data or ">" in data:
+            return False
         else:
-            print "Not a REQUEST."
-            socket.sendto(Protocol().createResponse("ERROR","NOT A REQUEST"), self.client_address)
+            return True
+
+    # Handler
+    def handle(self):
+        data = "dummy"
+        print "Client {} connected...".format(self.client_address)
+
+        while True:
+            data = self.request.recv(Protocol.BUFF_SIZE)
+            data = str(data).split()
+            if len(data) > 0:
+                print "\tReceived {} from {}".format(data, self.client_address)
+                if str(data[0]).upper() in ["REQUEST"]:
+                    data.pop(0) # remove REQUEST from list
+                    # Verify if there is no malicious input
+                    if self.isValid(data) is True:
+                        self.options.get(data[0])(self, data)
+                    else:
+                        print "\tMalicious arguments."
+                        self.request.send(Protocol().createResponse("ERROR","MALICIOUS ARGUMENT"))
+                elif str(data[0]).upper() in ["CLOSE"]:
+                    print "...client {} disconnected.".format(self.client_address)
+                    self.request.close()
+                    break
+                else:
+                    print "\tNot a valid protocol."
+                    self.request.send(Protocol().createResponse("ERROR","NOT A REQUEST"))
+
+
+class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
+    pass
 
 if __name__ == '__main__':
     print "Starting Daemon..."
     # Port that will be used -- change this if necessary
+    HOST = ''
     PORT = 9999
     # If no argument was used
     if len(sys.argv) is 1:
-        HOST = IPGetter.get_lan_ip()
-        print "No argument found, using {}:{}".format(HOST,PORT)
+        print "No argument found, using all available interfaces at port {}".format(PORT)
     else:
         # verify if argument is a valid IP
         try:
@@ -100,6 +109,6 @@ if __name__ == '__main__':
             exit(1)
 
     # Starts server
-    server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
+    server = ThreadedTCPServer((HOST, PORT), MyHandler)
     print "...daemon initialized."
     server.serve_forever()
