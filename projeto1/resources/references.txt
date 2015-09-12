@@ -15,3 +15,7 @@ Sockets
     https://docs.python.org/2/library/socketserver.html
     https://docs.python.org/2/library/socket.html
     https://docs.python.org/2/howto/sockets.html
+    http://www.informit.com/articles/article.aspx?p=2234249 -- Learn Socket Programming with Python
+    https://pymotw.com/2/socket/tcp.html -- TCP/IP Client and Server
+Multithreaded Server
+    http://stackoverflow.com/questions/20745352/creating-a-multithreaded-server-using-socketserver-framework-in-python
