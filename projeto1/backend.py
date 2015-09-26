@@ -1,8 +1,8 @@
-__author__ = 'Thales Menato and Thiago Nogueira'
-
+import logging
+import os
 import socket
-import sys
-import re
+
+__author__ = 'Thales Menato and Thiago Nogueira'
 
 # Protocol HEADER - ASCII in a single String:
 #
@@ -16,10 +16,10 @@ import re
 # and <parameters> can only be used in a "REQUEST" message, also, the daemon must parse
 # and verify malicious inputs like "|", ";", ">", so they're not executed
 
-# Class Protocol
-class Protocol:
 
+class Protocol:
     BUFF_SIZE = 1024
+
     # Standardization of communication protocol between backend and daemon
     def __init__(self):
         self.type = None            # REQUEST or RESPONSE
@@ -28,7 +28,7 @@ class Protocol:
         self.response = None        # if RESPONSE, the response from executed command
 
     # Create a REQUEST header and content
-    def createRequest(self, command, parameters = None):
+    def create_request(self, command, parameters=None):
         self.type = "REQUEST"
         self.command = command
         self.parameters = parameters
@@ -38,121 +38,134 @@ class Protocol:
             return self.type + " " + str(self.command) + " " + str(self.parameters)
 
     # Create a RESPONSE header and content
-    def createResponse(self, command, response):
+    def create_response(self, command, response):
         self.type = "RESPONSE"
         self.command = command
         self.response = response
         return self.type + " " + str(self.command) + " " + str(self.response) + "\n"
 
+
 class BackEnd:
+
+    if not os.path.exists("log"):
+        os.makedirs("log")
+    logging.basicConfig(filename="log/"+str(socket.gethostname())+'_BackEnd.log',
+                        filemode='w',
+                        level=logging.DEBUG)
 
     HOSTS = {}      # Key is tuple (ip, port) and Value is Protocol that will be sent
     SOCKETS = {}    # Key is tuple (ip, port) and Value is socket TCP
 
     # Add a Host to the HOSTS dictionary, it's socket to SOCKETS and connects.
     @staticmethod
-    def addHost(host):
-        BackEnd.HOSTS[host] = None # insert a tuple with ip:port
-        BackEnd.SOCKETS[host] = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Socket TCP
+    def add_host(host):
+        BackEnd.HOSTS[host] = []  # insert a tuple with ip:port
+        BackEnd.SOCKETS[host] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Socket TCP
         BackEnd.SOCKETS[host].connect(host)
-        print "\tHost {} added and connected.".format(host)
+        logging.info("\tHost {} added and connected.".format(host))
 
     @staticmethod
-    def removeHost(host):
+    def remove_host(host):
         BackEnd.HOSTS.pop(host)
         BackEnd.SOCKETS[host].close()
         BackEnd.SOCKETS.pop(host)
-        print "\tHost {} removed and disconnected.".format(host)
+        logging.info("\tHost {} removed and disconnected.".format(host))
 
     @staticmethod
-    def closeAllConnections():
-        for s in BackEnd.SOCKETS.itervalues():
+    def close_all_connections():
+        for h, s in BackEnd.SOCKETS.iteritems():
             s.sendall("CLOSE")
             s.close()
+            logging.info("\tHost {} removed and disconnected.".format(h))
 
     # Add a Package to determined Host
     @staticmethod
-    def addPackage(host, protocol):
-        if BackEnd.HOSTS.has_key(host) is False:
-            print "\tError on trying to add package to {} - host doesn't exist.".format(host)
+    def add_package(host, protocol):
+        if host not in BackEnd.HOSTS.keys():
+            logging.error("\tError on trying to add package to {} - host doesn't exist.".format(host))
         else:
-            BackEnd.HOSTS[host] = protocol
+            BackEnd.HOSTS[host].append(protocol)
 
     # From a list of Hosts and list of Protocol, attribute each protocol to each host, respectively
     @staticmethod
-    def mountPackages(hosts_list, protocol_list):
-        print "\n\tMounting packages..."
+    def mount_packages(hosts_list, protocol_list):
+        logging.debug("\n\tMounting packages...")
 
         if len(hosts_list) is not len(protocol_list):
-            print "\t\terror: different length of hosts and protocol, both should be lists."
+            logging.error("\t\tdifferent length of hosts and protocol, both should be lists.")
 
         else:
             for i in range(0, len(hosts_list)):
                 BackEnd.HOSTS[hosts_list[i]] = protocol_list[i]
-                print "\t\t{}\t:\t{}".format(hosts_list[i], protocol_list[i])
-        print "...finished."
+                logging.debug("\t\t{}\t:\t{}".format(hosts_list[i], protocol_list[i]))
+        logging.debug("\t...finished.")
 
     # Send all packages to all hosts
     @staticmethod
-    def sendAll():
-        data = []
-        print "\tSending to daemons..."
-        for host in BackEnd.HOSTS:
+    def send_all(host=None):
+        logging.debug("\tSending to daemon...")
 
-            curr_socket = BackEnd.SOCKETS[host]
+        if host is not None and host in BackEnd.HOSTS.keys():
 
-            message = str(BackEnd.HOSTS[host])
-            curr_socket.sendall(message)
+                curr_socket = BackEnd.SOCKETS[host]
+                messages = BackEnd.HOSTS[host]
+                received_message = []
+                for m in messages:
+                    curr_socket.sendall(m)
+                    received_message.append(curr_socket.recv(1024))
 
-            # This is for buffer, maybe work this if necessary
-            #amount_received = 0
-            #amount_expected = len(message)
+                # BackEnd.HOSTS[host] = recv_msg = curr_socket.recv(1024)
 
-            # while amount_received < amount_expected:
-            #     data = BackEnd.SOCK.recv(Protocol.BUFF_SIZE)
-            #     amount_received += len(data)
+                logging.debug("\t\tSent to {} | msg: {}\n\t\treceived: {}"
+                              .format(host, messages, received_message))
+                logging.debug("\t...finished.")
+                return received_message
 
-            BackEnd.HOSTS[host] = recv_msg = curr_socket.recv(1024)
+        logging.warning("\t...finished without sending to HOSTS.")
+        return "...finished without sending to HOSTS."
 
-            print "\t\tSent to {} | msg: {}\n\t\treceived: {}\n{}".format(host,message,recv_msg[:11], recv_msg[11:])
+# Code for Debug / Test purposes only
+# if __name__ == '__main__':
 
-        print "...finished."
-
-
-if __name__ == '__main__':
-
-    print "\nBackend test started..."
+    # print "\nBackend test started..."
     # Host list
-    hosts = [('192.168.1.101', 9999)]
+    # hosts = [('192.168.0.2', 9999)]
 
     # Add hosts to BackEnd
-    for h in hosts:
-        BackEnd.addHost(h)
-
-    # # Trying to add package to a non existing host
-    # print "\nTrying to add a package to a nonexistent Host..."
-    # BackEnd.addPackage(('192.168.1.2', 9999), Protocol().createRequest(1))
-
-    print "\nCreating request for 1 - ps ..."
+    # for h in hosts:
+    #     BackEnd.add_host(h)
+#
+#     # # Trying to add package to a non existing host
+#     # print "\nTrying to add a package to a nonexistent Host..."
+#     # BackEnd.addPackage(('192.168.1.2', 9999), Protocol().createRequest(1))
+#
+    # print "\nCreating request for 1 - ps ..."
     # Adding package to first host
-    BackEnd.addPackage(hosts[0], Protocol().createRequest(1))
-
+    # BackEnd.add_package(hosts[0], Protocol().create_request(1))
+    # BackEnd.add_package(hosts[0], Protocol().create_request(2))
+    # BackEnd.add_package(hosts[0], Protocol().create_request(3))
+    # BackEnd.add_package(hosts[0], Protocol().create_request(4))
+    # BackEnd.add_package(hosts[0], Protocol().create_request(1))
+    # BackEnd.add_package(hosts[0], Protocol().create_request(2))
+#
     # Send to 'key' host the 'value' protocol inside HOSTS dictionary
-    BackEnd.sendAll()
-
-    print "\nCreating request for 2 - df ..."
-
-    BackEnd.addPackage(hosts[0], Protocol().createRequest(2))
-    BackEnd.sendAll()
-
-    print "\nCreating request for 3 - finger ..."
-
-    BackEnd.addPackage(hosts[0], Protocol().createRequest(3))
-    BackEnd.sendAll()
-
-    print "\nCreating request for 4 - uptime ..."
-
-    BackEnd.addPackage(hosts[0], Protocol().createRequest(4))
-    BackEnd.sendAll()
-
-    BackEnd.closeAllConnections()
+    # response = BackEnd.send_all(hosts[0])
+    # for r in response:
+    #     print r
+#
+#     print "\nCreating request for 2 - df ..."
+#
+#     BackEnd.add_package(hosts[0], Protocol().create_request(2))
+#     BackEnd.send_all()
+#
+#     print "\nCreating request for 3 - finger ..."
+#
+#     BackEnd.add_package(hosts[0], Protocol().create_request(3))
+#     BackEnd.send_all()
+#
+#     print "\nCreating request for 4 - uptime ..."
+#
+#     BackEnd.add_package(hosts[0], Protocol().create_request(4))
+#     BackEnd.send_all()
+#
+    # BackEnd.close_all_connections()

@@ -1,3 +1,9 @@
+import SocketServer
+import socket
+import sys
+from backend import Protocol
+import commands
+
 __author__ = 'Thales Menato and Thiago Nogueira'
 
 # Daemon Script
@@ -6,11 +12,6 @@ __author__ = 'Thales Menato and Thiago Nogueira'
 # It uses the Protocol defined in backend (check that script for more information)
 #
 
-import SocketServer
-import socket
-import sys
-from backend import Protocol
-import commands
 
 class MyHandler(SocketServer.BaseRequestHandler):
 
@@ -27,29 +28,33 @@ class MyHandler(SocketServer.BaseRequestHandler):
     def response_ps(self, command):
         command.pop(0)
         args = " ".join(command)
-        self.request.send(Protocol().createResponse("1", str(commands.getoutput("ps " + args))))
+        self.request.send(Protocol().create_response("1", str(commands.getoutput("ps " + args))))
+
     def response_df(self, command):
         command.pop(0)
         args = " ".join(command)
-        self.request.send(Protocol().createResponse("2", str(commands.getoutput("df " + args))))
+        self.request.send(Protocol().create_response("2", str(commands.getoutput("df " + args))))
+
     def response_finger(self, command):
         command.pop(0)
         args = " ".join(command)
-        self.request.send(Protocol().createResponse("3", str(commands.getoutput("finger " + args))))
+        self.request.send(Protocol().create_response("3", str(commands.getoutput("finger " + args))))
+
     def response_uptime(self, command):
         command.pop(0)
         args = " ".join(command)
-        self.request.send(Protocol().createResponse("4", str(commands.getoutput("uptime " + args))))
+        self.request.send(Protocol().create_response("4", str(commands.getoutput("uptime " + args))))
 
     options = {
-        "1" : response_ps,
-        "2" : response_df,
-        "3" : response_finger,
-        "4" : response_uptime,
+        "1": response_ps,
+        "2": response_df,
+        "3": response_finger,
+        "4": response_uptime,
     }
 
-    def isValid(self, data):
-        #Verify malicious inputs like "|", ";", ">", so they're not executed
+    @staticmethod
+    def is_valid(data):
+        # Verify malicious inputs like "|", ";", ">", so they're not executed
         if "|" in data or ";" in data or ">" in data:
             return False
         else:
@@ -57,29 +62,27 @@ class MyHandler(SocketServer.BaseRequestHandler):
 
     # Handler
     def handle(self):
-        data = "dummy"
         print "Client {} connected...".format(self.client_address)
-
         while True:
             data = self.request.recv(Protocol.BUFF_SIZE)
             data = str(data).split()
             if len(data) > 0:
                 print "\tReceived {} from {}".format(data, self.client_address)
                 if str(data[0]).upper() in ["REQUEST"]:
-                    data.pop(0) # remove REQUEST from list
+                    data.pop(0)  # remove REQUEST from list
                     # Verify if there is no malicious input
-                    if self.isValid(data) is True:
+                    if self.is_valid(data) is True:
                         self.options.get(data[0])(self, data)
                     else:
                         print "\tMalicious arguments."
-                        self.request.send(Protocol().createResponse("ERROR","MALICIOUS ARGUMENT"))
+                        self.request.send(Protocol().create_response("ERROR", "MALICIOUS ARGUMENT"))
                 elif str(data[0]).upper() in ["CLOSE"]:
                     print "...client {} disconnected.".format(self.client_address)
                     self.request.close()
                     break
                 else:
                     print "\tNot a valid protocol."
-                    self.request.send(Protocol().createResponse("ERROR","NOT A REQUEST"))
+                    self.request.send(Protocol().create_response("ERROR","NOT A REQUEST"))
 
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
@@ -106,4 +109,9 @@ if __name__ == '__main__':
     # Starts server
     server = ThreadedTCPServer((HOST, PORT), MyHandler)
     print "...daemon initialized."
-    server.serve_forever()
+
+    try:
+        server.serve_forever()
+
+    except KeyboardInterrupt:
+        print "\nDaemon finished."
