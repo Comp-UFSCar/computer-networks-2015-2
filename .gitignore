@@ -58,3 +58,7 @@ target/
 
 # PyCharm
 .idea
+
+# Projeto1
+projeto1/log
+projeto1/host_list.txt
