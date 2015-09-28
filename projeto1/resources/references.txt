@@ -21,3 +21,5 @@ Multithreaded Server
     http://stackoverflow.com/questions/20745352/creating-a-multithreaded-server-using-socketserver-framework-in-python
 CGI HTTP SERVER
     http://stackoverflow.com/questions/11830084/global-variable-in-python-server
+Cookie
+    http://raspberrywebserver.com/cgiscripting/using-python-to-set-retreive-and-clear-cookies.html
