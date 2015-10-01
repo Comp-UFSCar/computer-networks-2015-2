@@ -1,0 +1,36 @@
+
+
+<div class="ui-widget ui-widget-content host_form">
+<!-- Left div, the inputs -->
+<h1 class="ui-widget ui-widget-header">Host_%(host)s : %(host-name)s</h1>
+    <div class="left_host_form">
+    <div class="input_line">
+        <label for="%(host)s_command_1">ps</label>
+        <input type="checkbox" id="%(host)s_command_1" name="%(host)s_command_1">
+        <label for="%(host)s_args_1">args:</label>
+        <input type="text" id="%(host)s_args_1" name="%(host)s_args_1" class="text ui-widget-content ui-corner-all">
+    </div>
+    <div class="input_line">
+        <label for="%(host)s_command_2">df</label>
+        <input type="checkbox" id="%(host)s_command_2" name="%(host)s_command_2">
+        <label for="%(host)s_args_2">args:</label>
+        <input type="text" id="%(host)s_args_2" name="%(host)s_args_2" class="text ui-widget-content ui-corner-all">
+    </div>
+    <div class="input_line">
+        <label for="%(host)s_command_3">finger</label>
+        <input type="checkbox" id="%(host)s_command_3" name="%(host)s_command_3">
+        <label for="%(host)s_args_3">args:</label>
+        <input type="text" id="%(host)s_args_3" name="%(host)s_args_3" class="text ui-widget-content ui-corner-all">
+    </div>
+    <div class="input_line">
+        <label for="%(host)s_command_4">uptime</label>
+        <input type="checkbox" id="%(host)s_command_4" name="%(host)s_command_4">
+        <label for="%(host)s_args_4">args:</label>
+        <input type="text" id="%(host)s_args_4" name="%(host)s_args_4" class="text ui-widget-content ui-corner-all">
+    </div>
+</div>
+<!-- Right div, the data received -->
+<div class="right_host_form">
+    <pre>%(html-data)s</pre>
+</div>
+</div>
