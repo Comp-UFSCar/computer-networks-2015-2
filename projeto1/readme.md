@@ -6,11 +6,11 @@ Description
 Briefly: Using a web interface, the user can pick from a limited set of *commands* and add arguments, if desired, that will be sent to a group of *Hosts (linux)* to execute it and reply the data back to the web interface.
 
 
-Using a CGI written in Python *[(webserver.py)](cgi-bin/webserver.py)*, the user can access a web interface that allows  him to see the available hosts and the commands that can be sent: *ps*, *df*, *finger* and *uptime*. 
+Using a CGI written in Python *[(webserver.py)](cgi_bin/webserver.py)*, the user can access a web interface that allows  him to see the available hosts and the commands that can be sent: *ps*, *df*, *finger* and *uptime*. 
 
-The CGI communicates directly with the *[backend.py](cgi-bin/backend.py)* where the *protocol* and sockets for  communicating with the host machines are defined.
+The CGI communicates directly with the *[backend.py](cgi_bin/backend.py)* where the *protocol* and sockets for  communicating with the host machines are defined.
 
-To answer the *backend*, an instance of *[daemon.py](daemon.py)* must be running on each host machine. It keeps listening to a defined port *(default=9999)* and when the backend sends something it verifies if the *request* is valid, executes the command locally and send back the command's output.
+To answer the *backend*, an instance of *[daemon.py](host/daemon.py)* must be running on each host machine. It keeps listening to a defined port *(default=9999)* and when the backend sends something it verifies if the *request* is valid, executes the command locally and send back the command's output.
 
 The answer is then processed by the *webserver* that exhibits it to the user. 
 
