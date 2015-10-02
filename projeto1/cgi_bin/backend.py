@@ -1,10 +1,18 @@
 import logging
 import os
 import socket
+import collections
+import cPickle as pickle
 
 __author__ = 'Thales Menato and Thiago Nogueira'
 
-log_folder = '/tmp/log'
+log_folder = "/tmp/"
+if not os.path.exists(log_folder):
+    os.makedirs(log_folder)
+logging.basicConfig(filename=log_folder + str(socket.gethostname()) + '_BackEnd.log',
+                    filemode='w',
+                    level=logging.DEBUG)
+
 
 # Protocol HEADER - ASCII in a single String:
 #
@@ -49,68 +57,84 @@ class Protocol:
 
 class BackEnd:
 
-    if not os.path.exists(log_folder):
-        os.makedirs(log_folder)
-    logging.basicConfig(filename=log_folder + str(socket.gethostname()) + '_BackEnd.log',
-                        filemode='w',
-                        level=logging.DEBUG)
+    HOSTS = collections.OrderedDict()      # Key is tuple (ip, port) and Value is Protocol that will be sent
+    SOCKETS = collections.OrderedDict()    # Key is tuple (ip, port) and Value is socket TCP
 
-    HOSTS = {}      # Key is tuple (ip, port) and Value is Protocol that will be sent
-    SOCKETS = {}    # Key is tuple (ip, port) and Value is socket TCP
+    def __init__(self):
+        try:
+            host_list = open('/tmp/host-list', 'rb')
+            self.HOSTS = pickle.load(host_list)
+            host_list.close()
+        except IOError:
+            host_list = open('/tmp/host-list', 'wb')
+            pickle.dump(self.HOSTS, host_list, 0)
+            host_list.close()
 
     # Add a Host to the HOSTS dictionary, it's socket to SOCKETS and connects.
-    @staticmethod
-    def add_host(host):
-        BackEnd.HOSTS[host] = []  # insert a tuple with ip:port
-        BackEnd.SOCKETS[host] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Socket TCP
-        BackEnd.SOCKETS[host].connect(host)
-        logging.info("\tHost {} added and connected.".format(host))
+    def add_host(self, _new_host):
+        # Try connection
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Socket TCP
+            s.connect(_new_host)
+            logging.info("\tHost {} added and connection working.".format(_new_host))
+            s.sendall("CLOSE")
+            s.close()
+            # Try to add _new_host to host_list file.
+            try:
+                host_list = open('/tmp/host-list', 'wb')
+                self.HOSTS[_new_host] = []  # insert a tuple with ip:port
+                pickle.dump(self.HOSTS, host_list, 0)
+                host_list.close()
+                return " "
+            except IOError:
+                return "Can't add host to file '/tmp/host_list'."
+        except socket.error:
+            return "Can't add host: Daemon not running or not accessible."
 
-    @staticmethod
-    def remove_host(host):
-        BackEnd.HOSTS.pop(host)
-        BackEnd.SOCKETS[host].close()
-        BackEnd.SOCKETS.pop(host)
-        logging.info("\tHost {} removed and disconnected.".format(host))
+    # Remove host from HOST dictionary
+    def remove_host(self, _host):
+        try:
+            host_list = open('/tmp/host-list', 'wb')  # Get host_list file
+            if self.HOSTS.has_key(_host):
+                self.HOSTS.pop(_host)  # Remove host from HOSTS and SOCKETS dictionaries
+            if self.SOCKETS.has_key(_host):
+                self.SOCKETS.pop(_host)
+            pickle.dump(self.HOSTS, host_list, 0)  # Write alterations to file
+            host_list.close()
+            logging.info("\tHost {} removed and disconnected.".format(_host))
+            return " "
+        except IOError:
+            return "Couldn't reach the file '/tmp/host_list'."
 
-    @staticmethod
-    def close_all_connections():
-        for h, s in BackEnd.SOCKETS.iteritems():
+    def connect_host(self, host):
+        self.SOCKETS[host] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Socket TCP
+        self.SOCKETS[host].connect(host)
+
+    def disconnect_host(self, host):
+        self.SOCKETS[host].sendall("CLOSE")
+        self.SOCKETS[host].close()
+
+    def close_all_connections(self):
+        for h, s in self.SOCKETS.iteritems():
             s.sendall("CLOSE")
             s.close()
             logging.info("\tHost {} removed and disconnected.".format(h))
 
     # Add a Package to determined Host
-    @staticmethod
-    def add_package(host, protocol):
-        if host not in BackEnd.HOSTS.keys():
+    def add_package(self, host, protocol):
+        if host not in self.HOSTS.keys():
             logging.error("\tError on trying to add package to {} - host doesn't exist.".format(host))
         else:
-            BackEnd.HOSTS[host].append(protocol)
-
-    # From a list of Hosts and list of Protocol, attribute each protocol to each host, respectively
-    @staticmethod
-    def mount_packages(hosts_list, protocol_list):
-        logging.debug("\n\tMounting packages...")
-
-        if len(hosts_list) is not len(protocol_list):
-            logging.error("\t\tdifferent length of hosts and protocol, both should be lists.")
-
-        else:
-            for i in range(0, len(hosts_list)):
-                BackEnd.HOSTS[hosts_list[i]] = protocol_list[i]
-                logging.debug("\t\t{}\t:\t{}".format(hosts_list[i], protocol_list[i]))
-        logging.debug("\t...finished.")
+            self.HOSTS[host].append(protocol)
 
     # Send all packages to all hosts
-    @staticmethod
-    def send_all(host=None):
+    def send_all(self, host=None):
         logging.debug("\tSending to daemon...")
 
-        if host is not None and host in BackEnd.HOSTS.keys():
+        if host is not None and host in self.HOSTS.keys():
 
-                curr_socket = BackEnd.SOCKETS[host]
-                messages = BackEnd.HOSTS[host]
+                curr_socket = self.SOCKETS[host]
+                messages = self.HOSTS[host]
                 received_message = []
                 for m in messages:
                     curr_socket.sendall(m)
@@ -123,50 +147,3 @@ class BackEnd:
 
         logging.warning("\t...finished without sending to HOSTS.")
         return "...finished without sending to HOSTS."
-
-""" Code for Debug / Test purposes only
-if __name__ == '__main__':
-
-    print "\nBackend test started..."
-    # Host list
-    hosts = [('192.168.0.2', 9999)]
-
-    # Add hosts to BackEnd
-    for h in hosts:
-        BackEnd.add_host(h)
-
-    # Trying to add package to a non existing host
-    print "\nTrying to add a package to a nonexistent Host..."
-    BackEnd.addPackage(('192.168.1.2', 9999), Protocol().createRequest(1))
-
-    print "\nCreating request for 1 - ps ..."
-    # Adding package to first host
-    BackEnd.add_package(hosts[0], Protocol().create_request(1))
-    BackEnd.add_package(hosts[0], Protocol().create_request(2))
-    BackEnd.add_package(hosts[0], Protocol().create_request(3))
-    BackEnd.add_package(hosts[0], Protocol().create_request(4))
-    BackEnd.add_package(hosts[0], Protocol().create_request(1))
-    BackEnd.add_package(hosts[0], Protocol().create_request(2))
-
-    # Send to 'key' host the 'value' protocol inside HOSTS dictionary
-    response = BackEnd.send_all(hosts[0])
-    for r in response:
-        print r
-
-    print "\nCreating request for 2 - df ..."
-
-    BackEnd.add_package(hosts[0], Protocol().create_request(2))
-    BackEnd.send_all()
-
-    print "\nCreating request for 3 - finger ..."
-
-    BackEnd.add_package(hosts[0], Protocol().create_request(3))
-    BackEnd.send_all()
-
-    print "\nCreating request for 4 - uptime ..."
-
-    BackEnd.add_package(hosts[0], Protocol().create_request(4))
-    BackEnd.send_all()
-
-    BackEnd.close_all_connections()
-"""
