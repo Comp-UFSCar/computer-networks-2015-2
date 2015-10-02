@@ -1,5 +1,40 @@
 Project 1
 ==================================
+Installation
+-------------
+For this installation example we're using *Ubuntu Server 14.04* and *Apache/2.4.10* (also tested with 2.4.7)
+
+####Requirements
+- Apache
+- Git
+```bash
+sudo apt-get install apache2 git
+```
+
+####Step-by-step
+Navigate to a folder using ```cd``` and clone this repository, in this example we'll be using ```~/```
+```bash
+cd ~
+git clone https://github.com/thamenato/ufscar-redes2015.git
+cd ufscar-redes2015/projeto1/ 
+```
+Now we need to copy the files to their respective Apache folders and change permission. Starting with CGI
+```bash
+sudo cp -rf cgi_bin/* /usr/lib/cgi-bin
+sudo chmod 755 -R /usr/lib/cgi-bin/templates 
+sudo chmod +x /usr/lib/cgi-bin/*.py
+```
+and now, the html
+```bash
+sudo mkdir /var/www/html/projeto1
+sudo cp -rf html/* /var/www/html/projeto1/
+sudo chmod 666 /var/www/html/projeto1/index.html  
+sudo chmod 755 -R /var/www/html/projeto1/jquery
+```
+that shall do the trick, but if your page doesn't load the background image and css there might be a problem inside *[(webserver.py)](cgi_bin/webserver.py#L15)*. You must change the path to the correct one.
+
+This is how the website should look like:
+![The website working](docs/website.jpg)
 
 Description
 --------------

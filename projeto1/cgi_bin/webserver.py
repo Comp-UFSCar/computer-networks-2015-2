@@ -12,8 +12,9 @@ __author__ = "Thales Menato and Thiago Nogueira"
 
 def html_header(message):
     # Print the top part of the html using header.html
+    path = {"path": '/projeto1/jquery/'}
     with open("templates/header.html") as f:
-        print f.read()
+        print f.read() % path
     print """<p class="error_message">%s</p>""" % message
 
 
