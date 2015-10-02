@@ -18,8 +18,8 @@ def html_header():
         print f.read()
 
 
-def html_footer():
-    print "</body></html>"
+def html_footer(message):
+    print "<p>%s</p></div></body></html>" % message
 
 
 def html_host_form(hosts):
@@ -57,7 +57,7 @@ def html_host_form(hosts):
 
         # Add Submit button and close the form tag
         print """<div class="host_submit">
-                    <input class="ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only"
+                    <input id="host-submit" class="ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only"
                         type="submit" value="Submit">
                 </div>
                 </form>"""
@@ -68,57 +68,69 @@ def html_new_host(hosts):
         print f.read()
 
 
+def add_new_host(hosts, ip, port):
+    try:
+        hostlist = open('/tmp/host-list', 'wb')
+        hosts[(str(ip), int(port))] = None
+        pickle.dump(HOSTS, hostlist, 0)
+        hostlist.close()
+        return " "
+    except IOError:
+        return "Error"
+
+
 # CGI "real magic" happens here
 def submit(hosts):
 
     form = cgi.FieldStorage()
 
     if form.keys():  # The is something already checked inside the host form
+        if form.has_key('ip'):
+            return add_new_host(hosts, form.getvalue("ip"), form.getvalue("port"))
+        else:
+            for h in hosts.keys():  # Adds hosts to HOST list and opens a TCP socket
+                BackEnd.add_host(h)
 
-        for h in hosts.keys():  # Adds hosts to HOST list and opens a TCP socket
-            BackEnd.add_host(h)
+            # For each host, create list with selected commands
+            for host in hosts.keys():
+                commands = [x for x in form.keys()
+                            if str(x).startswith(str(hosts.keys().index(host))+"_command")]
 
-        # For each host, create list with selected commands
-        for host in hosts.keys():
-            commands = [x for x in form.keys()
-                        if str(x).startswith(str(hosts.keys().index(host))+"_command")]
+                # Send the command list to backend for processing and receive the processed data
+                if len(commands) is not 0:
+                    for c in sorted(commands):
+                        # Get value from args input where c[0] is host number and c[-1] is desired command
+                        args = form.getvalue(c[0]+"_args_"+c[-1])
+                        BackEnd.add_package(host, Protocol().create_request(c[-1], args))
 
-            # Send the command list to backend for processing and receive the processed data
-            if len(commands) is not 0:
-                for c in sorted(commands):
-                    # Get value from args input where c[0] is host number and c[-1] is desired command
-                    args = form.getvalue(c[0]+"_args_"+c[-1])
-                    BackEnd.add_package(host, Protocol().create_request(c[-1], args))
+                    hosts[host] = BackEnd.send_all(host)
 
-                hosts[host] = BackEnd.send_all(host)
-
-        BackEnd.close_all_connections()
+            BackEnd.close_all_connections()
+            return " "
+    return " "
 
 
 if __name__ == "__main__":
 
     cgitb.enable()
     print "Content-type: text/html; charset=utf-8\n\n"  # CGI Content Tag
-
+    error_msg = " "
     # Host list
     HOSTS = collections.OrderedDict()
 
     try:
         host_list = open('/tmp/host-list', 'rb')
         HOSTS = pickle.load(host_list)
+        host_list.close()
     except IOError:
         host_list = open('/tmp/host-list', 'wb')
-        HOSTS[('192.168.0.2', 9999)] = None
-        HOSTS[('192.168.0.3', 9999)] = None
-        HOSTS[('192.168.0.4', 9999)] = None
         pickle.dump(HOSTS, host_list, 0)
-
-    host_list.close()
+        host_list.close()
 
     # CGI script
-    submit(HOSTS)
+    error_msg = submit(HOSTS)
     # Generates HTML
     html_header()
-    # html_new_host(HOSTS)
+    html_new_host(HOSTS)
     html_host_form(HOSTS)
-    html_footer()
+    html_footer(error_msg)
