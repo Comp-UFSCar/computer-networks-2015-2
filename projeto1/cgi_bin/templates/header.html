@@ -13,8 +13,14 @@
     <script src="/projeto1/jquery/jquery-ui.min.js"></script>
     <style>
         body {
+            font-family: Verdana, Arial, sans-serif;
             /* This pattern is downloaded from www.subtlepatterns.com  If you need more, that's where to get'em. */
             background-image: url("/projeto1/jquery/images/use_your_illusion.png");
+            font-size: 11px;
+        }
+        .content {
+            width: 920px;
+            margin: 0 auto;
         }
         .ui-button-text{
             width: 50px;
@@ -24,12 +30,10 @@
         }
 
         .host_form {
-            font-size: 11px;
             height: 300px;
-            width: 1000px;
             margin: 10px auto;
         }
-        .host_form h1 {
+        .title {
             background: darkgray;
             text-align: center;
             margin: 0;
@@ -39,24 +43,37 @@
             float: left;
             width: 280px;
             height: 200px;
-            padding-left: 2em;
+            padding-left: 0.5em;
         }
         .right_host_form {
             float: right;
-            width: 600px;
+            width: 570px;
             height: 230px;
             padding: 1em 1.5em 0 1.5em;
-            margin: 10px 20px 0 0;
+            margin: 1em 0.75em 0 0;
             color: white;
             background-color: #363636;
             font-size: 12px;
             overflow-y: scroll;
         }
         .host_submit {
-            margin: 0 auto;
-            width: 1200px;
+            margin: 50px auto;
+            padding-bottom: 20px;
             text-align: center;
+        }
+        #host-submit {
+            width: 200px;
+            height: 40px;
+        }
+        .validateTips {
+            text-align: center;
+        }
+        #addHost {
+            background-color: white;
+            text-align: center;
+            padding-top: 1.25em;
         }
     </style>
     </head>
     <body>
+        <div class="content">
