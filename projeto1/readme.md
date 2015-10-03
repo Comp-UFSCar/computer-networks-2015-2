@@ -36,6 +36,17 @@ that shall do the trick, but if your page doesn't load the background image and 
 This is how the website should look like:
 ![The website working](docs/website.jpg)
 
+Running it
+----------
+Now that the cgi is working properly, you just need to run the [daemon.py](host/daemon.py) on each host that you want to be accessed. So, clone this repository on the host machine, navigate to the host folder and run the daemon.py script:
+```bash
+cd ~
+git clone https://github.com/thamenato/ufscar-redes2015.git
+cd ufscar-redes2015/projeto1/host/
+sudo python daemon.py
+```
+Once it started, access the website that you are running on Apache (that should be something like *http://serverip/projeto1/*), type the host's ip and port (**default is 9999**) and click on "Add Host" button. That will add a form for that host, you can add as many hosts as you want, choose their commands and Submit at the end of the page.
+
 Description
 --------------
 Briefly: Using a web interface, the user can pick from a limited set of *commands* and add arguments, if desired, that will be sent to a group of *Hosts (linux)* to execute it and reply the data back to the web interface.
