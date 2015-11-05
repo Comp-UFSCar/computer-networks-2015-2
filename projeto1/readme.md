@@ -1,5 +1,12 @@
 Project 1
 ==================================
+
+### Students
+
+- Thales Eduardo Adair Menato - *[@thamenato](https://github.com/thamenato)*
+- Thiago Faria Nogueira - *[@ThiagoTioGuedes](https://github.com/ThiagoTioGuedes)*
+
+
 Installation
 -------------
 For this installation example we're using *Ubuntu Server 14.04* and *Apache/2.4.10* (also tested with 2.4.7)

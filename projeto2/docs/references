@@ -1,0 +1,11 @@
+// UDP Communication
+https://wiki.python.org/moin/UdpCommunication
+
+// Socket Server
+https://docs.python.org/2/library/socketserver.html
+
+// UDP-Based Data Transfer - UDT is a reliable UDP based application.
+http://udt.sourceforge.net
+
+// python-rudp - reliable udp protocol
+https://github.com/noiseoverip/python-rudp
