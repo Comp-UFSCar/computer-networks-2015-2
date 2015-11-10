@@ -1,23 +1,35 @@
-# Get's the projeto2.pdf, reads it as binary
-f = open('../docs/projeto2.pdf', 'rb')
-data = f.read()
-f.close()
+chunk_size = 2048
+files_folder = '../files/'
 
 
-file_size = len(data)
-print 'File size: {}'.format(file_size)
+def read_file(file_name):
+    f = open(files_folder + file_name, 'rb')   # Read file as binary
+    raw_data = f.read()
+    f.close()
 
-# Calculate number of chunks based on file_size
-chunk_size = 1024
-total_chunks = file_size / chunk_size
-if file_size % total_chunks:
-    total_chunks += 1
+    # Calculate number of chunks based on file_size
+    num_of_chunks = len(raw_data) / chunk_size
+    if len(raw_data) % num_of_chunks:
+        num_of_chunks += 1
 
-print 'Total chunks: {}'.format(total_chunks)
+    # Create list containing pieces of raw_data using chunk_size to divide it
+    chunks = []
+    for i in range(0, len(raw_data) + 1, chunk_size):
+        chunks.append(raw_data[i: i + chunk_size])
 
-# Writes a copy of original file writing chunk by chunk
-f = open('test.pdf', 'wb')
-for i in range(0, file_size + 1, chunk_size):
-    f.write(data[i: i + chunk_size])
+    return raw_data, chunks
 
-f.close()
+
+def write_file(file_name, chunks):
+    f = open(file_name, 'wb')   # Write file as binary
+    # Write chunk by chunk into the binary file
+    for c in chunks:
+        f.write(c)
+
+    f.close()
+
+
+# data, data_chunks = read_file('voyage.mp4')
+# print "File size: {}, Total chunks: {}".format(len(data), len(data_chunks))
+#
+# write_file('test.mp4', data_chunks)
