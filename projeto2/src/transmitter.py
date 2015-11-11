@@ -1,7 +1,11 @@
-# Transmitter works as a server. 
-# It receives a request from receiver with a file name and send that file back.
+"""Transmitter
 
-# First example from https://docs.python.org/2/library/socketserver.html
+This module has the responsibility of a server. It will receive a request from the Receiver (client) containing
+a file's name, will search if that file is inside the files folder and if true, this module will send the file
+to the receiver using a reliable UDP protocol.
+
+"""
+
 import SocketServer
 import file_handler
 

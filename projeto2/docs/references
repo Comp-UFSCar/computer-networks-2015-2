@@ -9,3 +9,7 @@ http://udt.sourceforge.net
 
 // python-rudp - reliable udp protocol
 https://github.com/noiseoverip/python-rudp
+
+// Google Style Python Docstrings
+http://sphinxcontrib-napoleon.readthedocs.org/en/latest/example_google.html
+http://google.github.io/styleguide/pyguide.html
