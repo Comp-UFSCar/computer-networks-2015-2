@@ -7,30 +7,48 @@ to the receiver using a reliable UDP protocol.
 """
 
 import SocketServer
-import file_handler
+
+from toolbox import file_handler
 
 
 class MyUDPHandler(SocketServer.BaseRequestHandler):
 
-    file_to_test = 'voyage.mp4'
-
     def handle(self):
-        data = self.request[0].strip()
-        socket = self.request[1]
-        print "{} wrote: {}".format(self.client_address[0], data)
+        _data = str(self.request[0].strip()).split()  # get message content
+        _socket = self.request[1]
+        print "receiver({})>\t{}".format(self.client_address[0], _data)
 
-        if 'request' == data:
-            data, chunks = file_handler.read_file(self.file_to_test)
-            socket.sendto(str(len(chunks)), self.client_address)
+        if 'REQUEST' in _data:  # Request from Receiver for a file
+            _data, _chunks = file_handler.read_file(_data[1])
+            if _data is False:  # file does not exists
+                print "transmitter>file not found!"
+                _socket.sendto("ERROR file not found", self.client_address)
+            else:  # send back number of chunks that will be sent
+                _socket.sendto(str(len(_chunks)), self.client_address)
 
-        if 'ok' == data:
-            data, chunks = file_handler.read_file(self.file_to_test)
-            for c in chunks:
-                socket.sendto(c, self.client_address)
+        elif 'OK' in _data:
+            _file_name = _data[1]
+            _data, _chunks = file_handler.read_file(_file_name)
+            for c in _chunks:  # loop for sending all chunks
+                _socket.sendto(c, self.client_address)
+            print "transmitter>file '{}' sent to receiver({})".format(_file_name, self.client_address[0])
+
+
+def _set_port():
+    """Define the port that will be used for communication."""
+
+    while True:
+        _port = raw_input("transmitter>")
+        try:
+            _port = int(_port)  # verify if port is valid int
+        except ValueError:
+            print "Invalid port."
+        else:
+            return _port
 
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 9999
-    server = SocketServer.UDPServer((HOST, PORT), MyUDPHandler)
-    print "Transmitter is running..."
+    port = _set_port()
+    server = SocketServer.UDPServer(('', port), MyUDPHandler)
+    print "transmitter is running on port {}...".format(port)
     server.serve_forever()

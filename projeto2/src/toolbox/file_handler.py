@@ -29,9 +29,13 @@ def read_file(file_name):
 
     """
 
-    f = open(FILES_FOLDER + file_name, 'rb')
-    raw_data = f.read()  # raw_data receives all binary file buffer
-    f.close()
+    try:
+        f = open(FILES_FOLDER + file_name, 'rb')
+    except IOError:
+        return False, ""
+    else:
+        raw_data = f.read()  # raw_data receives all binary file buffer
+        f.close()
 
     # Calculate number of chunks based on file_size
     num_of_chunks = len(raw_data) / CHUNK_SIZE
@@ -54,15 +58,14 @@ def write_file(file_name, chunks):
         chunks (List[str]): List containing pieces of file's binary data.
 
     """
-    f = open(file_name, 'wb')
-    # Write chunk by chunk into the binary file
-    for c in chunks:
-        f.write(c)
 
-    f.close()
-
-
-# data, data_chunks = read_file('voyage.mp4')
-# print "File size: {}, Total chunks: {}".format(len(data), len(data_chunks))
-#
-# write_file('test.mp4', data_chunks)
+    try:
+        f = open(file_name, 'wb')
+    except IOError:
+        return False, ""
+    else:
+        # Write chunk by chunk into the binary file
+        for c in chunks:
+            f.write(c)
+        f.close()
+        return True

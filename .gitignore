@@ -59,6 +59,5 @@ target/
 # PyCharm
 .idea
 
-# Projeto1
-projeto1/log
-projeto1/host-list.txt
+# Projeto2
+projeto2/src/received_files
