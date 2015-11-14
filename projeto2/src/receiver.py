@@ -8,6 +8,7 @@ using a reliable UDP protocol.
 
 import socket
 import os
+import sys
 from toolbox import file_handler
 
 SOCK = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -59,6 +60,7 @@ if __name__ == '__main__':
 
         # Receives the number of chunks that must be transferred
         total_chunks = str(SOCK.recv(socket.SO_RCVBUF).split())
+        _chunk_size = int(total_chunks[2:-2])
 
         if "ERROR" in total_chunks:
             print "...{}".format(" ".join(total_chunks))
@@ -75,6 +77,9 @@ if __name__ == '__main__':
 
             if 'FINISHED' not in pack:
                 chunks.append(pack)
+                sys.stdout.flush()
+                sys.stdout.write("Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size)))
+
                 SOCK.sendto('OK ' + file_name, (hostname, port))
             else:
                 communicating = False
