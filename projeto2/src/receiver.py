@@ -8,6 +8,7 @@ using a reliable UDP protocol.
 
 import socket
 import os
+import sys
 from toolbox import file_handler
 
 SOCK = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -59,6 +60,7 @@ if __name__ == '__main__':
 
         # Receives the number of chunks that must be transferred
         total_chunks = str(SOCK.recv(socket.SO_RCVBUF).split())
+        _chunk_size = int(total_chunks[2:-2])
 
         if "ERROR" in total_chunks:
             print "...{}".format(" ".join(total_chunks))
@@ -71,15 +73,19 @@ if __name__ == '__main__':
         while communicating:
             # TODO: check the number in the package header to be sure it's the right one
             # TODO: for when there will be a full fledged package, separate the header from the data
-            chunks.append(SOCK.recv(socket.SO_RCVBUF))
-            expected_package += 1
-            SOCK.sendto('OK ' + file_name, (hostname, port))
+            pack = SOCK.recv(socket.SO_RCVBUF)
 
-            if expected_package == total_chunks[1]:
+            if 'FINISHED' not in pack:
+                chunks.append(pack)
+                sys.stdout.flush()
+                sys.stdout.write("Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size)))
+
+                SOCK.sendto('OK ' + file_name, (hostname, port))
+            else:
                 communicating = False
-
-        # Write the binary file
-        if file_handler.write_file(RECEIVED_FILES_DIR + file_name, chunks) is True:
-            print "...file {} written.".format(file_name)
-        else:
-            print "...file could not be written."
+                # Write the binary file
+                if file_handler.write_file(RECEIVED_FILES_DIR + file_name, chunks) is True:
+                    print "...file {} written.".format(file_name)
+                else:
+                    print "...file could not be written."
+                chunks = []
