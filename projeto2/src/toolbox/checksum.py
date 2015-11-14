@@ -83,9 +83,12 @@ class Checksum:
 
         Returns:
         True    if it is a valid pair of data and checksum
-        False   otherwise
+        False   otherwise"""
 
-        """
+        d = raw_input()
+        c = Checksum.compute(d)
+        print Checksum.verify(d, c+1)
+        print Checksum.verify(d, c)
         c = Checksum.__compute(data)
 
         # The sum of a number with its 2's complement is 0
