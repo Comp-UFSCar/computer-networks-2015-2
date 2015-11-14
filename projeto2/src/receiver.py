@@ -71,15 +71,16 @@ if __name__ == '__main__':
         while communicating:
             # TODO: check the number in the package header to be sure it's the right one
             # TODO: for when there will be a full fledged package, separate the header from the data
-            chunks.append(SOCK.recv(socket.SO_RCVBUF))
-            expected_package += 1
-            SOCK.sendto('OK ' + file_name, (hostname, port))
+            pack = SOCK.recv(socket.SO_RCVBUF)
 
-            if expected_package == total_chunks[1]:
+            if 'FINISHED' not in pack:
+                chunks.append(pack)
+                SOCK.sendto('OK ' + file_name, (hostname, port))
+            else:
                 communicating = False
-
-        # Write the binary file
-        if file_handler.write_file(RECEIVED_FILES_DIR + file_name, chunks) is True:
-            print "...file {} written.".format(file_name)
-        else:
-            print "...file could not be written."
+                # Write the binary file
+                if file_handler.write_file(RECEIVED_FILES_DIR + file_name, chunks) is True:
+                    print "...file {} written.".format(file_name)
+                else:
+                    print "...file could not be written."
+                chunks = []

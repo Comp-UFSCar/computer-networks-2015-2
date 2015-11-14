@@ -48,15 +48,18 @@ def handle():
                         elif 'OK' in data:
                             sending_files = True
                             _file_name = data[1]
-                            # data, _chunks = file_handler.read_file(_file_name)
                             # TODO: check the number in the package header to be sure it's the right one
                             # TODO: remove this loop and send a chunk at time, after the previously sent was received
                             if _chunks:
                                 s.sendto(_chunks.pop(0), addr)
-                            expected_package += 1
-                    # if this is true, it means the file was completely sent to the receiver
-                    if expected_package == _chunk_size:
-                        print "transmitter>file '{}' sent to receiver({})".format(_file_name, addr)
+                            else:
+                                # for now, it's sending a simple 'finished' text, soon it will be be a full fledged
+                                # package
+                                s.sendto('FINISHED', addr)
+                                print "transmitter>file '{}' sent to receiver({})".format(_file_name, addr)
+                                sending_files = False
+
+
 
 
 def _set_port():
