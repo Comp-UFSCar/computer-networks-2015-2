@@ -30,7 +30,7 @@ class Checksum:
 
 
 d = raw_input()
-c = Checksum.checksum(d)
-print Checksum.verifyChecksum(d, c+1)
-print Checksum.verifyChecksum(d, c)
+c = Checksum.compute(d)
+print Checksum.verify(d, c+1)
+print Checksum.verify(d, c)
 
