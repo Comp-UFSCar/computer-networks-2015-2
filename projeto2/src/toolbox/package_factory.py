@@ -35,7 +35,7 @@ class ReliableUDP(object):
         if type(_value) is bool or _value is None:
             self.__flag_syn = _value
         else:
-            self.__flag_syn = _value
+            self.__flag_syn = None
             print "ReliableUDP: could not set flag_syn."
 
     @property
@@ -47,7 +47,7 @@ class ReliableUDP(object):
         if type(_value) is bool or _value is None:
             self.__flag_fin = _value
         else:
-            self.__flag_fin = _value
+            self.__flag_fin = None
             print "ReliableUDP: could not set flag_fin."
 
     @property
