@@ -17,8 +17,10 @@ How to use:
 
 """
 
-
 class Checksum:
+
+    __MAX_INT = 2 ** 16 - 1
+    """ int: Maximum 16-bits integer number for modulo operation (via bitwise operation &)."""
 
     @staticmethod
     def __compute(data):
@@ -42,8 +44,7 @@ class Checksum:
         # Byte array is traversed every two bytes, then half of its size
         size = (size + remainder) / 2
         checksum = 0
-        # Biggest checksum value. Instantiated for improvement purposes.
-        max_int = 2 ** 16 - 1
+
         while size > 0:
             # Byte array is traversed backwards.
             size -= 1
@@ -52,8 +53,8 @@ class Checksum:
             # Number from 0 to 255
             n = ord(payload[2 * size + 1])
             # Checksum is an accumulated sum of two adjacent bytes
-            # If the sum is a number greater than 2 bytes, it is rounded to 2 bytes by max_int
-            checksum = (checksum + (m | n)) & max_int
+            # If the sum is a number greater than 2 bytes, it is rounded to 2 bytes by __MAX_INT
+            checksum = (checksum + (m | n)) & Checksum.__MAX_INT
         return checksum
 
     @staticmethod
@@ -68,8 +69,9 @@ class Checksum:
 
         """
         c = Checksum.__compute(data)
+
         # The 2's complement of a binary number X is NOT(X) + 1
-        return ((~c) + 1) & (2 ** 16 - 1)
+        return ((~c) + 1) & Checksum.__MAX_INT
 
     @staticmethod
     def verify(data, checksum):
@@ -85,5 +87,6 @@ class Checksum:
 
         """
         c = Checksum.__compute(data)
+
         # The sum of a number with its 2's complement is 0
-        return ((c + checksum) & (2 ** 16 - 1)) == 0
+        return ((c + checksum) & Checksum.__MAX_INT) == 0
