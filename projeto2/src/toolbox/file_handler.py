@@ -1,4 +1,5 @@
 """
+
 This module is responsible for reading and writing binary files.
 
 For the communication between Receiver and Transmitter, the file must be split in smaller pieces: called here as
