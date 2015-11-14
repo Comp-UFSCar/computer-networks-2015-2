@@ -39,6 +39,12 @@ def _user_input():
 
 if __name__ == '__main__':
     """Receiver main loop"""
+    communicating = False
+    # buffer that will store the incoming file
+    chunks = []
+
+    # the number of the next expected package
+    expected_package = 0
 
     # Verify if directory exists, if not - creates it.
     if not os.path.exists(RECEIVED_FILES_DIR):
@@ -52,21 +58,28 @@ if __name__ == '__main__':
         print "...requesting to transmitter({}:{}) for file {}".format(hostname, port, file_name)
 
         # Receives the number of chunks that must be transferred
-        total_chunks = SOCK.recv(socket.SO_RCVBUF)
+        total_chunks = str(SOCK.recv(socket.SO_RCVBUF).split())
 
-        if "ERROR" in str(total_chunks).split():
-            print "...{}".format(" ".join(str(total_chunks).split()[1:]))
+        if "ERROR" in total_chunks:
+            print "...{}".format(" ".join(total_chunks))
         else:
             # Acknowledge transmitter that total_chunks were received
             SOCK.sendto('OK ' + file_name, (hostname, port))
+            communicating = True
 
-            # Receive all chunks and append it on list
-            chunks = []
-            for i in range(0, int(total_chunks)):
-                chunks.append(SOCK.recv(socket.SO_RCVBUF))
+        # Receive all chunks and append it on list
+        while communicating:
+            # TODO: check the number in the package header to be sure it's the right one
+            # TODO: for when there will be a full fledged package, separate the header from the data
+            chunks.append(SOCK.recv(socket.SO_RCVBUF))
+            expected_package += 1
+            SOCK.sendto('OK ' + file_name, (hostname, port))
 
-            # Write the binary file
-            if file_handler.write_file(RECEIVED_FILES_DIR + file_name, chunks) is True:
-                print "...file {} written.".format(file_name)
-            else:
-                print "...file could not be written."
+            if expected_package == total_chunks[1]:
+                communicating = False
+
+        # Write the binary file
+        if file_handler.write_file(RECEIVED_FILES_DIR + file_name, chunks) is True:
+            print "...file {} written.".format(file_name)
+        else:
+            print "...file could not be written."
