@@ -9,7 +9,9 @@ using a reliable UDP protocol.
 import socket
 import os
 import sys
+import select
 from toolbox import file_handler
+from toolbox import package_factory as pf
 
 SOCK = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 """socket: Socket using UDP protocol."""
@@ -54,38 +56,73 @@ if __name__ == '__main__':
     while True:
         hostname, port, file_name = _user_input()
 
-        # Send a request to Transmitter
-        SOCK.sendto('REQUEST ' + file_name, (hostname, port))
-        print "...requesting to transmitter({}:{}) for file {}".format(hostname, port, file_name)
+        # SOCK.setblocking(0)
+        # Sockets from which we expect to read
+        inputs = [SOCK]
+        # Sockets to which we expect to write
+        outputs = []
 
-        # Receives the number of chunks that must be transferred
-        total_chunks = str(SOCK.recv(socket.SO_RCVBUF).split())
-        _chunk_size = int(total_chunks[2:-2])
+        timeout = 1
 
-        if "ERROR" in total_chunks:
-            print "...{}".format(" ".join(total_chunks))
-        else:
-            # Acknowledge transmitter that total_chunks were received
-            SOCK.sendto('OK ' + file_name, (hostname, port))
-            communicating = True
+        _ack = pf.create_ack(0)
+        _ack.payload = file_name
 
-        # Receive all chunks and append it on list
-        while communicating:
-            # TODO: check the number in the package header to be sure it's the right one
-            # TODO: for when there will be a full fledged package, separate the header from the data
-            pack = SOCK.recv(socket.SO_RCVBUF)
+        _receiver_seq_number = 0
+        _transmitter_seq_number = 0
 
-            if 'FINISHED' not in pack:
-                chunks.append(pack)
-                sys.stdout.flush()
-                sys.stdout.write("Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size)))
+        # Handshake
+        print "Starting handshake..."
+        handshake = True
 
-                SOCK.sendto('OK ' + file_name, (hostname, port))
-            else:
-                communicating = False
-                # Write the binary file
-                if file_handler.write_file(RECEIVED_FILES_DIR + file_name, chunks) is True:
-                    print "...file {} written.".format(file_name)
-                else:
-                    print "...file could not be written."
-                chunks = []
+        while handshake:
+            # SYN
+            print "SYN"
+            _package = pf.create_data(_receiver_seq_number, None, True, False)
+            SOCK.sendto(_package.to_string(), (hostname, port))
+            print "...sent SYN"
+            _data, _address = SOCK.recvfrom(1024)
+            _package = pf.ReliableUDP(_data)
+            if _package.package_type == pf.TYPE_ACK and _package.flag_syn is True:
+                print "...received SYN-ACK"
+                _package = pf.create_ack(4)
+                _package.payload = file_name
+                SOCK.sendto(_package.to_string(), _address)
+                print "...sent ACK"
+                handshake = False
+
+        """ WORKS """
+        # # Send a request to Transmitter
+        # SOCK.sendto('REQUEST ' + file_name, (hostname, port))
+        # print "...requesting to transmitter({}:{}) for file {}".format(hostname, port, file_name)
+        #
+        # # Receives the number of chunks that must be transferred
+        # total_chunks = str(SOCK.recv(socket.SO_RCVBUF).split())
+        # _chunk_size = int(total_chunks[2:-2])
+        #
+        # if "ERROR" in total_chunks:
+        #     print "...{}".format(" ".join(total_chunks))
+        # else:
+        #     # Acknowledge transmitter that total_chunks were received
+        #     SOCK.sendto('OK ' + file_name, (hostname, port))
+        #     communicating = True
+        #
+        # # Receive all chunks and append it on list
+        # while communicating:
+        #     # TODO: check the number in the package header to be sure it's the right one
+        #     # TODO: for when there will be a full fledged package, separate the header from the data
+        #     pack = SOCK.recv(socket.SO_RCVBUF)
+        #
+        #     if 'FINISHED' not in pack:
+        #         chunks.append(pack)
+        #         sys.stdout.flush()
+        #         sys.stdout.write("Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size)))
+        #
+        #         SOCK.sendto('OK ' + file_name, (hostname, port))
+        #     else:
+        #         communicating = False
+        #         # Write the binary file
+        #         if file_handler.write_file(RECEIVED_FILES_DIR + file_name, chunks) is True:
+        #             print "...file {} written.".format(file_name)
+        #         else:
+        #             print "...file could not be written."
+        #         chunks = []

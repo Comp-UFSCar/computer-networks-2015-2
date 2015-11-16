@@ -6,11 +6,11 @@ This module is responsible for creating packages that will be used to help with 
 
 from enum import Enum
 import file_handler
+import checksum
 
 
-class PackageType(Enum):
-    ACK = 0
-    DATA = 1
+TYPE_ACK = 0
+TYPE_DATA = 1
 
 
 class ReliableUDP(object):
@@ -20,11 +20,25 @@ class ReliableUDP(object):
     __seq_number = None
     __payload = None
     __package_type = None
+    __checksum = None
 
-    def __init__(self, _seq_number, _payload, _package_type):
-        self.seq_number = _seq_number
-        self.payload = _payload
-        self.package_type = _package_type
+    def __init__(self, _from_string=None, _seq_number=None, _payload=None, _package_type=None):
+        if _from_string is not None:
+            __lines = str(_from_string).split("\n", 5)
+            self.package_type = int(__lines[0].split()[1])
+            self.flag_syn = bool(__lines[1].split()[1])
+            self.flag_fin = bool(__lines[2].split()[1])
+            self.seq_number = __lines[3].split()[1]
+            self.checksum = __lines[4].split()[1]
+            self.payload = __lines[5]
+
+        if _seq_number is not None:
+            self.seq_number = _seq_number
+        if _payload is not None:
+            self.payload = _payload
+        if _package_type is not None:
+            self.package_type = _package_type
+        self.checksum = _payload
 
     @property
     def flag_syn(self):
@@ -67,7 +81,7 @@ class ReliableUDP(object):
 
     @package_type.setter
     def package_type(self, _type):
-        if _type in PackageType:
+        if _type in [TYPE_DATA, TYPE_ACK]:
             self.__package_type = _type
         else:
             print "ReliableUDP: package type invalid."
@@ -80,27 +94,50 @@ class ReliableUDP(object):
     def payload(self, _payload):
         self.__payload = _payload
 
+    @property
+    def checksum(self):
+        return self.__checksum
+
+    @checksum.setter
+    def checksum(self, _data):
+        if _data is not None:
+            self.__checksum = checksum.compute(_data)
+
+    def to_string(self):
+        return "TYPE {}\nSYN {}\nFIN {}\nSEQ_NUMBER {}\nCHECKSUM {}\n{}"\
+                   .format(self.package_type, self.flag_syn, self.flag_fin,
+                           self.seq_number, self.checksum, self.payload)
+
 
 def create_ack(_package_number):
-    return ReliableUDP(_package_number, None, PackageType.ACK)
+    return ReliableUDP(_seq_number=_package_number, _package_type=TYPE_ACK)
 
 
 def create_data(_seq_number, _payload, _flag_syn=False, _flag_fin=False):
-    _package = ReliableUDP(_seq_number, _payload, PackageType.DATA)
+    _package = ReliableUDP(_seq_number=_seq_number, _payload=_payload, _package_type=TYPE_DATA)
     _package.flag_syn = _flag_syn
     _package.flag_fin = _flag_fin
     return _package
 
 
 def pack_chunks(_chunks):
-    _packs = [create_data(_chunks.index(p), p) for p in _chunks]
+    _packs = [create_data(_chunks.index(_payload), _payload) for _payload in _chunks]
     _packs[0].flag_syn = True
     _packs[-1].flag_fin = True
     return _packs
 
 
+""" DEBUG ONLY """
 # raw_data, chunks = file_handler.read_file("../../files/dc_ufscar.jpg")
+# chunks = ["this\nis\na\nbig", "is", "sparta"]
 # pack = pack_chunks(chunks)
 #
 # for p in pack:
-#     print "SEQ_NUMBER: {} SYN: {} FIN: {}".format(p.seq_number, p.flag_syn, p.flag_fin)
+#     print p.to_string()
+#     print "SEQ_NUMBER: {} SYN: {} FIN: {} CHECKSUM: {}".format(p.seq_number, p.flag_syn, p.flag_fin, p.checksum)
+
+# for p in pack:
+#     n_p = ReliableUDP(p.to_string())
+#     print "TYPE {}\nSYN {}\nFIN {}\nSEQ_NUMBER {}\nCHECKSUM {}\n{}"\
+#         .format(n_p.package_type, n_p.flag_syn, n_p.flag_fin,
+#                 n_p.seq_number, n_p.checksum, n_p.payload)

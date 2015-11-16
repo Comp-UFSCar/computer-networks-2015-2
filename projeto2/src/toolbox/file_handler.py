@@ -8,10 +8,8 @@ chunks will be used on write_file function to re-create the original binary file
 
 """
 
-CHUNK_SIZE = 2048
+_CHUNK_SIZE = 2048
 """int: Chunk size to be used for splitting the file."""
-FILES_FOLDER = '../files/'
-"""str: Folder where files are located."""
 
 
 def read_file(file_name):
@@ -31,7 +29,7 @@ def read_file(file_name):
     """
 
     try:
-        f = open(FILES_FOLDER + file_name, 'rb')
+        f = open(file_name, 'rb')
     except IOError:
         return False, ""
     else:
@@ -39,14 +37,14 @@ def read_file(file_name):
         f.close()
 
     # Calculate number of chunks based on file_size
-    num_of_chunks = len(raw_data) / CHUNK_SIZE
+    num_of_chunks = len(raw_data) / _CHUNK_SIZE
     if len(raw_data) % num_of_chunks:
         num_of_chunks += 1
 
     # Create list containing pieces of raw_data using chunk_size to divide it
     chunks = []
-    for i in range(0, len(raw_data) + 1, CHUNK_SIZE):
-        chunks.append(raw_data[i: i + CHUNK_SIZE])
+    for i in range(0, len(raw_data) + 1, _CHUNK_SIZE):
+        chunks.append(raw_data[i: i + _CHUNK_SIZE])
 
     return raw_data, chunks
 
