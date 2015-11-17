@@ -4,7 +4,6 @@ This module is responsible for creating packages that will be used to help with 
 
 """
 
-from enum import Enum
 import file_handler
 import checksum
 
