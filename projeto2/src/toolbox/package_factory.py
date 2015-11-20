@@ -6,6 +6,7 @@ This module is responsible for creating packages that will be used to help with 
 
 import file_handler
 import checksum
+import struct
 
 
 TYPE_ACK = 0
@@ -22,14 +23,29 @@ class ReliableUDP(object):
     __checksum = None
 
     def __init__(self, _from_string=None, _seq_number=None, _payload=None, _package_type=None):
+
         if _from_string is not None:
+            #print _from_string
             __lines = str(_from_string).split("\n", 5)
             self.package_type = int(__lines[0].split()[1])
             self.flag_syn = bool(__lines[1].split()[1])
             self.flag_fin = bool(__lines[2].split()[1])
             self.seq_number = __lines[3].split()[1]
-            self.checksum = __lines[4].split()[1]
+            _checksum = int(__lines[4].split()[1])
             self.payload = __lines[5]
+
+            if checksum.verify(self.payload, _checksum) is False:
+                print "Packet is corrupt"
+
+        """ Binario
+        if _from_string is not None:
+            _payload_size = str(len(_from_string) - 14)
+            (self.package_type, self.flag_syn, self.flag_fin,
+             self.seq_number, _checksum, self.payload) = struct.unpack('!h??QH'+_payload_size+'s', _from_string)
+
+            if checksum.verify(self.payload, _checksum) is False:
+                print "Packet is corrupt"
+        """
 
         if _seq_number is not None:
             self.seq_number = _seq_number
@@ -37,7 +53,10 @@ class ReliableUDP(object):
             self.payload = _payload
         if _package_type is not None:
             self.package_type = _package_type
+
+        # atualiza checksum do pacote
         self.checksum = _payload
+
 
     @property
     def flag_syn(self):
@@ -92,6 +111,7 @@ class ReliableUDP(object):
     @payload.setter
     def payload(self, _payload):
         self.__payload = _payload
+        self.checksum = _payload
 
     @property
     def checksum(self):
@@ -106,6 +126,13 @@ class ReliableUDP(object):
         return "TYPE {}\nSYN {}\nFIN {}\nSEQ_NUMBER {}\nCHECKSUM {}\n{}"\
                    .format(self.package_type, self.flag_syn, self.flag_fin,
                            self.seq_number, self.checksum, self.payload)
+
+    """ Binario
+    def pack(self):
+        _payload_size = str(len(self.payload))
+        return struct.pack('!h??QH'+_payload_size+'s', self.package_type, self.flag_syn, self.flag_fin,
+                           self.seq_number, self.checksum, self.payload)
+    """
 
 
 def create_ack(_package_number):
