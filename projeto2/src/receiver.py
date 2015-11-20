@@ -68,8 +68,9 @@ if __name__ == '__main__':
             print "...requesting to transmitter({}:{}) for file {}".format(hostname, port, file_name)
             _package = pf.create_data(0, 'REQUEST '+file_name, True)
             SOCK.sendto(_package.to_string(), (hostname, port))
+            # Binario >> SOCK.sendto(_package.pack(), (hostname, port))
             print "...sent SYN"
-            _data, _address = SOCK.recvfrom(1024)
+            _data, _address = SOCK.recvfrom(4096)
             _package = pf.ReliableUDP(_data)
             if _package.package_type == pf.TYPE_ACK and _package.flag_syn is True:
                 print "...received SYN-ACK"
@@ -84,6 +85,7 @@ if __name__ == '__main__':
                     _package = pf.create_ack(_receiver_seq_number)
                     _package.payload = file_name
                     SOCK.sendto(_package.to_string(), _address)
+                    # Binario >> SOCK.sendto(_package.pack(), _address)
                     _receiver_seq_number += 1
                     print "...sent DATA-ACK"
                     handshake = False
@@ -105,6 +107,7 @@ if __name__ == '__main__':
                 _package = pf.create_ack(_receiver_seq_number)
                 # TODO: resend the ACK when it times out
                 SOCK.sendto(_package.to_string(), (hostname, port))
+                # Binario >> SOCK.sendto(_package.pack(), (hostname, port))
 
         # Receive all chunks and append it on list
         while communicating:
@@ -119,6 +122,7 @@ if __name__ == '__main__':
             _package = pf.create_ack(_receiver_seq_number)
             # TODO: resend the ACK when it times out
             SOCK.sendto(_package.to_string(), (hostname, port))
+            # Binario >> SOCK.sendto(_package.pack(), (hostname, port))
             _receiver_seq_number += 1
 
             communicating = not _last_package

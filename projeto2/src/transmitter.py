@@ -62,17 +62,20 @@ def handle():
                                 _package.payload = 'ERROR file not found'
                                 print "transmitter>file not found!"
                                 s.sendto(_package.to_string(), _address)
+                                # Binario >> s.sendto(_package.pack(), _address)
                             else:  # send back number of chunks that will be sent
                                 _packages = pf.pack_chunks(_chunks)
                                 _chunk_size = len(_chunks)
                                 _package.payload = str(_chunk_size)
                                 s.sendto(_package.to_string(), _address)
+                                # Binario >> s.sendto(_package.pack(), _address)
 
                         if _package.package_type == pf.TYPE_ACK :
                             _sending_files = True
                             # TODO: check the number in the package header to be sure it's the right one
                             if _packages:
                                 s.sendto(_packages.pop().to_string(), _address)
+                                # Binario >> s.sendto(_packages.pop().pack(), _address)
                             else:
                                 print "transmitter>file '{}' sent to receiver({})".format(file_name, _address)
                                 _sending_files = False
