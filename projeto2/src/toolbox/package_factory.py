@@ -25,11 +25,11 @@ class ReliableUDP(object):
     def __init__(self, _from_string=None, _seq_number=None, _payload=None, _package_type=None):
 
         if _from_string is not None:
-            #print _from_string
+            #print _from_string[0:60]
             __lines = str(_from_string).split("\n", 5)
             self.package_type = int(__lines[0].split()[1])
-            self.flag_syn = bool(__lines[1].split()[1])
-            self.flag_fin = bool(__lines[2].split()[1])
+            self.flag_syn = bool(__lines[1].split()[1] == 'True')
+            self.flag_fin = bool(__lines[2].split()[1] == 'True')
             self.seq_number = __lines[3].split()[1]
             _checksum = int(__lines[4].split()[1])
             self.payload = __lines[5]

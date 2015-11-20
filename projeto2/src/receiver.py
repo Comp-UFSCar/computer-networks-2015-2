@@ -120,8 +120,9 @@ if __name__ == '__main__':
             _package = pf.ReliableUDP(_data)
             _last_package = _package.flag_fin
             chunks.append(_package.payload)
-            sys.stdout.flush()
-            sys.stdout.write("Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size)))
+            #sys.stdout.flush()
+            #sys.stdout.write("Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size)))
+            print "Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size))
             _package = pf.create_ack(_receiver_seq_number)
             # TODO: resend the ACK when it times out
             SOCK.sendto(_package.to_string(), (hostname, port))
@@ -130,8 +131,8 @@ if __name__ == '__main__':
 
             communicating = not _last_package
 
-    # Write the binary file
-    if file_handler.write_file(RECEIVED_FILES_DIR + file_name, chunks) is True:
-        print "...file {} written.".format(file_name)
-    else:
-        print "...file could not be written."
+        # Write the binary file
+        if file_handler.write_file(RECEIVED_FILES_DIR + file_name, chunks) is True:
+            print "...file {} written.".format(file_name)
+        else:
+            print "...file could not be written."
