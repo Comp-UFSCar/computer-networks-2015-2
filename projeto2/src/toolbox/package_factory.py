@@ -31,11 +31,11 @@ class ReliableUDP(object):
             self.flag_syn = bool(__lines[1].split()[1])
             self.flag_fin = bool(__lines[2].split()[1])
             self.seq_number = __lines[3].split()[1]
-            _checksum = int(__lines[4].split()[1])
+            #_checksum = int(__lines[4].split()[1])
             self.payload = __lines[5]
 
-            if checksum.verify(self.payload, _checksum) is False:
-                print "Packet is corrupt"
+            #if checksum.verify(self.payload, _checksum) is False:
+            #    print "Packet is corrupt"
 
         """ Binario
         if _from_string is not None:
@@ -53,9 +53,6 @@ class ReliableUDP(object):
             self.payload = _payload
         if _package_type is not None:
             self.package_type = _package_type
-
-        # atualiza checksum do pacote
-        self.checksum = _payload
 
 
     @property
