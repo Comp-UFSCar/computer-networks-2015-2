@@ -102,12 +102,15 @@ if __name__ == '__main__':
             _data, _address = SOCK.recvfrom(4096)
             _package = pf.ReliableUDP(_data)
             if _package.package_type == pf.TYPE_DATA and _package.flag_syn is True:
-                communicating = True
                 chunks.append(_package.payload)
                 _package = pf.create_ack(_receiver_seq_number)
                 # TODO: resend the ACK when it times out
                 SOCK.sendto(_package.to_string(), (hostname, port))
                 # Binario >> SOCK.sendto(_package.pack(), (hostname, port))
+
+                # if data is one-packet-only, the first package will contain the whole file
+                if _chunk_size != 1:
+                    communicating = True
 
         # Receive all chunks and append it on list
         while communicating:

@@ -23,12 +23,12 @@ def handle():
     _chunk_size = 0
     file_name = ''
 
+    _packages = []
     while inputs:
 
         timeout = 1
         # Wait for at least one of the sockets to be ready for processing
         readable, writable, exceptional = select.select(inputs, outputs, inputs, timeout)
-        _packages = []
 
         if not (readable or writable or exceptional) and _sending_files:
             print 'timed out, the package should be resent'
@@ -70,12 +70,12 @@ def handle():
                                 s.sendto(_package.to_string(), _address)
                                 # Binario >> s.sendto(_package.pack(), _address)
 
-                        if _package.package_type == pf.TYPE_ACK :
+                        if _package.package_type == pf.TYPE_ACK:
                             _sending_files = True
                             # TODO: check the number in the package header to be sure it's the right one
                             if _packages:
-                                s.sendto(_packages.pop().to_string(), _address)
-                                # Binario >> s.sendto(_packages.pop().pack(), _address)
+                                s.sendto(_packages.pop(0).to_string(), _address)
+                                # Binario >> s.sendto(_packages.pop(0).pack(), _address)
                             else:
                                 print "transmitter>file '{}' sent to receiver({})".format(file_name, _address)
                                 _sending_files = False
