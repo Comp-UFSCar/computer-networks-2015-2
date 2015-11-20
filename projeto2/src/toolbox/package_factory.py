@@ -31,11 +31,11 @@ class ReliableUDP(object):
             self.flag_syn = bool(__lines[1].split()[1])
             self.flag_fin = bool(__lines[2].split()[1])
             self.seq_number = __lines[3].split()[1]
-            #_checksum = int(__lines[4].split()[1])
+            _checksum = int(__lines[4].split()[1])
             self.payload = __lines[5]
 
-            #if checksum.verify(self.payload, _checksum) is False:
-            #    print "Packet is corrupt"
+            if checksum.verify(self.payload, _checksum) is False:
+                print "Packet is corrupt"
 
         """ Binario
         if _from_string is not None:
@@ -133,7 +133,8 @@ class ReliableUDP(object):
 
 
 def create_ack(_package_number):
-    return ReliableUDP(_seq_number=_package_number, _package_type=TYPE_ACK)
+    _payload = 'ACK'
+    return ReliableUDP(_seq_number=_package_number, _payload=_payload, _package_type=TYPE_ACK)
 
 
 def create_data(_seq_number, _payload, _flag_syn=False, _flag_fin=False):
