@@ -41,12 +41,13 @@ def _user_input():
 
 if __name__ == '__main__':
     """Receiver main loop"""
+    # Boolean that verifies while receiver is being served
     communicating = False
-    # buffer that will store the incoming file
+    # buffer that will store the incoming file chunks
     chunks = []
-
-    # the number of the next expected package
+    # the index of the next expected package
     _expected_package = 0
+    _download_percentage = -1
 
     # Verify if directory exists, if not - creates it.
     if not os.path.exists(RECEIVED_FILES_DIR):
@@ -54,24 +55,20 @@ if __name__ == '__main__':
 
     while True:
         hostname, port, file_name = _user_input()
-        _time_out = 0
 
-        # Handshake
-        print "Starting handshake..."
+        # Starting handshake with server
         handshake = True
 
         while handshake:
             # SYN
-            print "SYN"
-            print "...requesting to transmitter({}:{}) for file {}".format(hostname, port, file_name)
-            _package = pf.create_data(0, 'REQUEST '+file_name, True)
+            print "receiver requesting to transmitter({}:{}) for file {}".format(hostname, port, file_name)
+            _package = pf.create_data(0, 'REQUEST ' + file_name, True)
             SOCK.sendto(_package.to_string(), (hostname, port))
             # Binario >> SOCK.sendto(_package.pack(), (hostname, port))
-            print "...sent SYN"
             _data, _address = SOCK.recvfrom(4096)
             _package = pf.ReliableUDP(_data)
             if _package.package_type == pf.TYPE_ACK and _package.flag_syn is True:
-                print "...received SYN-ACK"
+                # Received SYN-ACK"
                 # this is the transmitter response, if it has the named file, it will return it's size
                 total_chunks = _package.payload
                 # otherwise, it will return an ERROR and the handshake will no longer be needed
@@ -84,19 +81,20 @@ if __name__ == '__main__':
                     _package.payload = file_name
                     SOCK.sendto(_package.to_string(), _address)
                     # Binario >> SOCK.sendto(_package.pack(), _address)
-                    print "...sent DATA-ACK"
+                    # DATA-ACK was sent
                     handshake = False
 
         _chunk_size = 0
         chunks = []
 
-        # TODO:move this area of code back into the above loop to allow re-send of the final handshake
+        # TODO: move this area of code back into the above loop to allow re-send of the final handshake
         if "ERROR" in total_chunks:
             print "...{}".format(" ".join(total_chunks))
         else:
-            print 'waiting for the first package of file'
+            # Waiting for the first package of file
             _chunk_size = int(total_chunks)
             _data, _address = SOCK.recvfrom(4096)
+            # Build received package
             _package = pf.ReliableUDP(_data)
             if _package.package_type == pf.TYPE_DATA and _package.flag_syn is True:
                 chunks.append(_package.payload)
@@ -111,29 +109,32 @@ if __name__ == '__main__':
 
         # Receive all chunks and append it on list
         while communicating:
-            # TODO: check the number in the package header to be sure it's the right one
-            # TODO: for when there will be a full fledged package, separate the header from the data
             _data, _address = SOCK.recvfrom(4096)
             _package = pf.ReliableUDP(_data)
             if int(_package.seq_number) == _expected_package:
-                _last_package = _package.flag_fin
+                # Updates condition to last package (If it contains FYN flag)
+                communicating = not _package.flag_fin
                 chunks.append(_package.payload)
                 #sys.stdout.flush()
                 #sys.stdout.write("Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size)))
-                print "Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size))
+                if _download_percentage < (float(len(chunks)*100/_chunk_size)):
+                    _download_percentage += 1
+                    print 'Download progress: {}'.format(_download_percentage)
                 _package = pf.create_ack(_expected_package)
                 _expected_package += 1
             else:
-                _last_package = False
                 _package = pf.create_ack(_expected_package)
 
             SOCK.sendto(_package.to_string(), (hostname, port))
             # Binario >> SOCK.sendto(_package.pack(), (hostname, port))
-
-            communicating = not _last_package
 
         # Write the binary file
         if file_handler.write_file(RECEIVED_FILES_DIR + file_name, chunks) is True:
             print "...file {} written.".format(file_name)
         else:
             print "...file could not be written."
+
+        # Prepares receiver for new REQUEST
+        chunks = []
+        _expected_package = 0
+        _download_percentage = -1

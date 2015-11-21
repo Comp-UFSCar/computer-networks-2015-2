@@ -17,78 +17,103 @@ _FILES_FOLDER = "../files/"
 
 def handle():
 
+    # Boolean that verifies if a file is being sent or if server is idle
     _sending_files = False
-    _chunk_size = 0
-    file_name = ''
-
     # Array that contains unconfirmed packets to be sent
     _packages = []
+    # Index of last sent package but not confirmed yet
     _unconfirmed_index = 0
+    # Index of last confirmed package
     _confirmed_index = 0
-    _batch_quantity = 5
+    # Go-Back-N window size
+    _window_size = 5
 
+    # OBS: Socket timeout is initially None (for REQUESTs)
     while True:
 
         try:
+            # Receive new REQUEST or ACK
             _data, _address = server.recvfrom(4096)
-        except socket.error:
-            print 'timed out, {} packages will be resent'.format(_batch_quantity)
 
+        # If timeout has finished
+        except socket.timeout:
             _data = None
-            server.settimeout(1)
-            _max_index = min(_confirmed_index + _batch_quantity, _chunk_size)
+            # Index cannot be greater than number of packages
+            _max_index = min(_confirmed_index + _window_size, _chunk_size)
+            # Update _unconfirmed_index with last sent package
             _unconfirmed_index = _max_index
+            print 'timed out, packages from {} to {} will be resent'.format(_confirmed_index, _max_index - 1)
             for x in range(_confirmed_index, _max_index):
                 server.sendto(_packages[x - _confirmed_index].to_string(), _address)
                 # Binario >> s.sendto(_packages.pop(x - _confirmed_index).pack(), _address)
 
+        # If a package has arrived
         if _data:
-            # Received package
+            # Build received package
             _package = pf.ReliableUDP(_data)
 
+            # If package contains new REQUEST and no other request is being served
             if not _sending_files \
                     and _package.flag_syn \
-                    and 'REQUEST' in str(_package.payload):  # Request from Receiver for a file
+                    and 'REQUEST' in str(_package.payload):
 
                 file_name = str(_package.payload).split()[1]
-                print '...receiver({}) requested file {}'.format(_address, file_name)
+                print 'receiver({}) requested file {}'.format(_address, file_name)
+                # Breaks fila data into many chunks
                 data, _chunks = file_handler.read_file(_FILES_FOLDER + file_name)
 
+                # Build response package
                 _package = pf.create_ack(0)
                 _package.flag_syn = True
                 if not data:  # file does not exists
-                    _package.payload = 'ERROR file not found'
+                    _package.payload = 'ERROR file not found!'
                     print "transmitter>file not found!"
                     server.sendto(_package.to_string(), _address)
                     # Binario >> s.sendto(_package.pack(), _address)
                 else:  # send back number of chunks that will be sent
                     _packages = pf.pack_chunks(_chunks)
                     _chunk_size = len(_chunks)
+                    # File data was break into packages. No more necessary.
+                    data = _chunks = None
+                    # Response package contains the number of chunks
                     _package.payload = str(_chunk_size)
                     server.sendto(_package.to_string(), _address)
                     # Binario >> s.sendto(_package.pack(), _address)
                     _sending_files = True
+                    # Set timeout to 1 because next received package will be an ACK
                     server.settimeout(1)
 
+            # If received package is an ACK
             if _package.package_type == pf.TYPE_ACK and _package.seq_number > 0:
                 _old_confirmed_index = _confirmed_index
                 _confirmed_index = int(_package.seq_number) + 1
-                # remove confirmed packages from list
+                # If it is not negative, remove confirmed packages from _packages
                 if (_confirmed_index - _old_confirmed_index) > 0:
-                    server.settimeout(1)
+                    # remove confirmed packages from list
                     for x in range(0, _confirmed_index - _old_confirmed_index):
                         _packages.pop(0)
+                # Else, an old ACK has arrived and it doesn't update
+                else:
+                    _confirmed_index = _old_confirmed_index
 
+        # If there are packages to be sent
         if _packages:
-            _max_index = min(_confirmed_index + _batch_quantity, _chunk_size)
+            # Index cannot be greater than number of packages
+            _max_index = min(_confirmed_index + _window_size, _chunk_size)
             for x in range(_unconfirmed_index, _max_index):
+                # Update last sent package index
                 _unconfirmed_index += 1
                 server.sendto(_packages[x - _confirmed_index].to_string(), _address)
                 # Binario >> s.sendto(_packages.pop(x - _confirmed_index).pack(), _address)
+        # Else, all packets have successfully been sent and confirmed
         else:
-            print "transmitter>file '{}' sent to receiver({})".format(file_name, _address)
+            print "transmitter successfully sent file '{}' to receiver({})".format(file_name, _address)
+            # Prepares server for new REQUEST
             _sending_files = False
             server.settimeout(None)
+            _unconfirmed_index = 0
+            _confirmed_index = 0
+            _window_size = 5
 
 
 def _set_port():
