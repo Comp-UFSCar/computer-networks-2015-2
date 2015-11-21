@@ -23,15 +23,27 @@ def handle():
     _chunk_size = 0
     file_name = ''
 
+    # Array that contains unconfirmed packets to be sent
     _packages = []
+    _timeout = None
+    _unconfirmed_index = 0
+    _confirmed_index = 0
+    _batch_quantity = 5
     while inputs:
 
-        timeout = 1
         # Wait for at least one of the sockets to be ready for processing
-        readable, writable, exceptional = select.select(inputs, outputs, inputs, timeout)
+        readable, writable, exceptional = select.select(inputs, outputs, inputs, _timeout)
 
         if not (readable or writable or exceptional) and _sending_files:
-            print 'timed out, the package should be resent'
+            # timeout is over
+            print 'timed out, {} packages will be resent'.format(_batch_quantity)
+
+            _timeout = 1
+            _max_index = min(_confirmed_index + _batch_quantity, _chunk_size)
+            _unconfirmed_index = _max_index
+            for x in range(_confirmed_index, _max_index):
+                s.sendto(_packages[x - _confirmed_index].to_string(), _address)
+                # Binario >> s.sendto(_packages.pop(x - _confirmed_index).pack(), _address)
         else:
             # Handle inputs
             for s in readable:
@@ -48,10 +60,15 @@ def handle():
                     #     print "ACK chegou"
 
                     _data, _address = s.recvfrom(4096)
-                    _package = pf.ReliableUDP(_data)
 
                     if _data:
-                        if _package.flag_syn and 'REQUEST' in str(_package.payload):  # Request from Receiver for a file
+                        # Received package
+                        _package = pf.ReliableUDP(_data)
+
+                        if not _sending_files \
+                                and _package.flag_syn \
+                                and 'REQUEST' in str(_package.payload):  # Request from Receiver for a file
+
                             file_name = str(_package.payload).split()[1]
                             print '...receiver({}) requested file {}'.format(_address, file_name)
                             data, _chunks = file_handler.read_file(_FILES_FOLDER + file_name)
@@ -69,16 +86,28 @@ def handle():
                                 _package.payload = str(_chunk_size)
                                 s.sendto(_package.to_string(), _address)
                                 # Binario >> s.sendto(_package.pack(), _address)
+                                _sending_files = True
+                                _timeout = 1
 
-                        if _package.package_type == pf.TYPE_ACK:
-                            _sending_files = True
-                            # TODO: check the number in the package header to be sure it's the right one
-                            if _packages:
-                                s.sendto(_packages.pop(0).to_string(), _address)
-                                # Binario >> s.sendto(_packages.pop(0).pack(), _address)
-                            else:
-                                print "transmitter>file '{}' sent to receiver({})".format(file_name, _address)
-                                _sending_files = False
+                        if _package.package_type == pf.TYPE_ACK and _package.seq_number > 0:
+                            _old_confirmed_index = _confirmed_index
+                            _confirmed_index = int(_package.seq_number) + 1
+                            # remove confirmed packages from list
+                            if (_confirmed_index - _old_confirmed_index) > 0:
+                                _timeout = 1
+                                for x in range(0, _confirmed_index - _old_confirmed_index):
+                                    _packages.pop(0)
+
+                    if _packages:
+                        _max_index = min(_confirmed_index + _batch_quantity, _chunk_size)
+                        for x in range(_unconfirmed_index, _max_index):
+                            _unconfirmed_index += 1
+                            s.sendto(_packages[x - _confirmed_index].to_string(), _address)
+                            # Binario >> s.sendto(_packages.pop(x - _confirmed_index).pack(), _address)
+                    else:
+                        print "transmitter>file '{}' sent to receiver({})".format(file_name, _address)
+                        _sending_files = False
+                        _timeout = None
 
 
 def _set_port():

@@ -46,14 +46,12 @@ if __name__ == '__main__':
     chunks = []
 
     # the number of the next expected package
-    expected_package = 0
+    _expected_package = 0
 
     # Verify if directory exists, if not - creates it.
     if not os.path.exists(RECEIVED_FILES_DIR):
         os.makedirs(RECEIVED_FILES_DIR)
 
-    _receiver_seq_number = 0
-    _transmitter_seq_number = 0
     while True:
         hostname, port, file_name = _user_input()
         _time_out = 0
@@ -82,11 +80,10 @@ if __name__ == '__main__':
                 else:
                     # since the transmitter responded with the correct chunk_size, the receiver will send an ack and
                     # wait for the file to come
-                    _package = pf.create_ack(_receiver_seq_number)
+                    _package = pf.create_ack(0)
                     _package.payload = file_name
                     SOCK.sendto(_package.to_string(), _address)
                     # Binario >> SOCK.sendto(_package.pack(), _address)
-                    _receiver_seq_number += 1
                     print "...sent DATA-ACK"
                     handshake = False
 
@@ -103,8 +100,8 @@ if __name__ == '__main__':
             _package = pf.ReliableUDP(_data)
             if _package.package_type == pf.TYPE_DATA and _package.flag_syn is True:
                 chunks.append(_package.payload)
-                _package = pf.create_ack(_receiver_seq_number)
-                # TODO: resend the ACK when it times out
+                _package = pf.create_ack(_expected_package)
+                _expected_package += 1
                 SOCK.sendto(_package.to_string(), (hostname, port))
                 # Binario >> SOCK.sendto(_package.pack(), (hostname, port))
 
@@ -118,16 +115,20 @@ if __name__ == '__main__':
             # TODO: for when there will be a full fledged package, separate the header from the data
             _data, _address = SOCK.recvfrom(4096)
             _package = pf.ReliableUDP(_data)
-            _last_package = _package.flag_fin
-            chunks.append(_package.payload)
-            #sys.stdout.flush()
-            #sys.stdout.write("Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size)))
-            print "Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size))
-            _package = pf.create_ack(_receiver_seq_number)
-            # TODO: resend the ACK when it times out
+            if int(_package.seq_number) == _expected_package:
+                _last_package = _package.flag_fin
+                chunks.append(_package.payload)
+                #sys.stdout.flush()
+                #sys.stdout.write("Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size)))
+                print "Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size))
+                _package = pf.create_ack(_expected_package)
+                _expected_package += 1
+            else:
+                _last_package = False
+                _package = pf.create_ack(_expected_package)
+
             SOCK.sendto(_package.to_string(), (hostname, port))
             # Binario >> SOCK.sendto(_package.pack(), (hostname, port))
-            _receiver_seq_number += 1
 
             communicating = not _last_package
 
