@@ -15,7 +15,7 @@ _FILES_FOLDER = "../files/"
 """str: Folder where files are located."""
 
 
-def handle():
+def handler():
 
     # Boolean that verifies if a file is being sent or if server is idle
     _sending_files = False
@@ -57,10 +57,10 @@ def handle():
                     and _package.flag_syn \
                     and 'REQUEST' in str(_package.payload):
 
-                file_name = str(_package.payload).split()[1]
-                print 'receiver({}) requested file {}'.format(_address, file_name)
+                _file_name = str(_package.payload).split()[1]
+                print 'receiver({}) requested file {}'.format(_address, _file_name)
                 # Breaks fila data into many chunks
-                data, _chunks = file_handler.read_file(_FILES_FOLDER + file_name)
+                data, _chunks = file_handler.read_file(_FILES_FOLDER + _file_name)
 
                 # Build response package
                 _package = pf.create_ack(0)
@@ -107,7 +107,7 @@ def handle():
                 # Binario >> s.sendto(_packages.pop(x - _confirmed_index).pack(), _address)
         # Else, all packets have successfully been sent and confirmed
         else:
-            print "transmitter successfully sent file '{}' to receiver({})".format(file_name, _address)
+            print "transmitter successfully sent file '{}' to receiver({})".format(_file_name, _address)
             # Prepares server for new REQUEST
             _sending_files = False
             server.settimeout(None)
@@ -135,9 +135,9 @@ if __name__ == "__main__":
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     # Bind the socket to the port
-    server_address = ('localhost', port)
+    server_address = ('', port)  # ip address is '' so all interfaces will be used
     print "transmitter is running on port {}...".format(port)
     server.bind(server_address)
 
     # Loop to serve the socket server
-    handle()
+    handler()
