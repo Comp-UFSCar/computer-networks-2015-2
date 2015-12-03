@@ -31,6 +31,8 @@ def handler():
     _window_size = 5
     # How many times the same window was re-sent
     _resents = 0
+    # Flag used to show the correct outcome of the file request
+    _file_found = False
 
     # OBS: Socket timeout is initially None (for REQUESTs)
     while True:
@@ -58,15 +60,15 @@ def handler():
                     _package = pf.create_ack(0)
                     _package.flag_syn = True
                     if not data:  # file does not exists
+                        _file_found = False
                         _package.payload = 'ERROR file not found!'
                         print "transmitter>file not found!"
                         server.sendto(_package.to_string(), _address)
                         # Binario >> s.sendto(_package.pack(), _address)
                     else:  # send back number of chunks that will be sent
+                        _file_found = True
                         _packages = pf.pack_chunks(_chunks)
                         _chunk_size = len(_chunks)
-                        # File data was break into packages. No more necessary.
-                        data = _chunks = None
                         # Response package contains the number of chunks
                         _package.payload = str(_chunk_size)
                         server.sendto(_package.to_string(), _address)
@@ -100,7 +102,8 @@ def handler():
                     # Binario >> s.sendto(_packages.pop(x - _confirmed_index).pack(), _address)
             # Else, all packets have successfully been sent and confirmed
             else:
-                print "transmitter successfully sent file '{}' to receiver({})".format(_file_name, _address)
+                if _file_found:
+                    print "transmitter successfully sent file '{}' to receiver({})".format(_file_name, _address)
                 # Prepares server for new REQUEST
                 _sending_files = False
                 server.settimeout(None)

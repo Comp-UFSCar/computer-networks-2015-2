@@ -121,39 +121,39 @@ if __name__ == '__main__':
                     # Binario >> SOCK.sendto(_package.pack(), (hostname, port))
 
                     # if data is one-packet-only, the first package will contain the whole file
-                    if _chunk_size != 1:
+                    if _chunk_size > 2:
                         communicating = True
 
-            try:
-                # Receive all chunks and append it on list
-                while communicating:
-                    _data, _address = SOCK.recvfrom(4096)
-                    _package = pf.ReliableUDP(_data)
-                    if int(_package.seq_number) == _expected_package:
-                        # Updates condition to last package (If it contains FYN flag)
-                        communicating = not _package.flag_fin
-                        chunks.append(_package.payload)
-                        sys.stdout.flush()
-                        sys.stdout.write("Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size)))
-                        # if _download_percentage < (float(len(chunks)*100/_chunk_size)):
-                        #     _download_percentage += 1
-                        #     print 'Download progress: {}'.format(_download_percentage)
-                        _package = pf.create_ack(_expected_package)
-                        _expected_package += 1
+                try:
+                    # Receive all chunks and append it on list
+                    while communicating:
+                        _data, _address = SOCK.recvfrom(4096)
+                        _package = pf.ReliableUDP(_data)
+                        if int(_package.seq_number) == _expected_package:
+                            # Updates condition to last package (If it contains FYN flag)
+                            communicating = not _package.flag_fin
+                            chunks.append(_package.payload)
+                            sys.stdout.flush()
+                            sys.stdout.write("Download progress: %d%%   \r" % (float(len(chunks)*100/_chunk_size)))
+                            # if _download_percentage < (float(len(chunks)*100/_chunk_size)):
+                            #     _download_percentage += 1
+                            #     print 'Download progress: {}'.format(_download_percentage)
+                            _package = pf.create_ack(_expected_package)
+                            _expected_package += 1
+                        else:
+                            _package = pf.create_ack(_expected_package)
+
+                        SOCK.sendto(_package.to_string(), (hostname, port))
+                        # Binario >> SOCK.sendto(_package.pack(), (hostname, port))
+
+                    # Write the binary file
+                    if file_handler.write_file(RECEIVED_FILES_DIR + file_name, chunks) is True:
+                        print "...file {} written.".format(file_name)
                     else:
-                        _package = pf.create_ack(_expected_package)
+                        print "...file could not be written."
 
-                    SOCK.sendto(_package.to_string(), (hostname, port))
-                    # Binario >> SOCK.sendto(_package.pack(), (hostname, port))
-
-                # Write the binary file
-                if file_handler.write_file(RECEIVED_FILES_DIR + file_name, chunks) is True:
-                    print "...file {} written.".format(file_name)
-                else:
-                    print "...file could not be written."
-
-            except socket.timeout:
-                print "the socket has timed-out while receiving the file {}, please, try again later".format(file_name)
+                except socket.timeout:
+                    print "the socket has timed-out while receiving the file {}, please, try again later".format(file_name)
 
             # Prepares receiver for new REQUEST
             chunks = []
