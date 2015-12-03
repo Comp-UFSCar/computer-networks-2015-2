@@ -142,6 +142,8 @@ def _set_port():
         _port = raw_input("transmitter>")
         try:
             _port = int(_port)  # verify if port is valid int
+            if _port < 0:
+                raise ValueError
         except ValueError:
             print "Invalid port."
         else:
@@ -162,6 +164,7 @@ if __name__ == "__main__":
             # Bind the socket to the port
             server_address = ('', port)  # ip address is '' so all interfaces will be used
             server.bind(server_address)
+            _server_open = True
         except socket.error, exc:
             if 10048 in exc:
                 print "Port is already being used, please, choose another one"

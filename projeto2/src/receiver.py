@@ -28,6 +28,8 @@ def _user_input():
                 _hostname = _command[0]
                 _port = int(_command[1])  # verify port
                 _file_name = _command[2]
+                if _port < 0:
+                    raise ValueError
             except ValueError:
                 print "Invalid port."
             else:
