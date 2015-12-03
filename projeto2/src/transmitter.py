@@ -10,15 +10,21 @@ import socket
 
 from toolbox import file_handler
 from toolbox import package_factory as pf
+from random import randint
 
 _FILES_FOLDER = "../files/"
 """str: Folder where files are located."""
 # The max number of times a window will be re-sent before giving up
 _MAX_ATTEMPTS = 5
+# Go-Back-N window size
+_WINDOW_SIZE = 5
+# Percentage of packages that will be intentionally lost
+_PACKAGE_LOSS = 0
+# Percentage of packages that will be intentionally corrupted
+_PACKAGE_CORRUPTION = 0
 
 
 def handler():
-
     # Boolean that verifies if a file is being sent or if server is idle
     _sending_files = False
     # Array that contains unconfirmed packets to be sent
@@ -27,8 +33,6 @@ def handler():
     _unconfirmed_index = 0
     # Index of last confirmed package
     _confirmed_index = 0
-    # Go-Back-N window size
-    _window_size = 5
     # How many times the same window was re-sent
     _resents = 0
     # Flag used to show the correct outcome of the file request
@@ -40,6 +44,9 @@ def handler():
         try:
             # Receive new REQUEST or ACK
             _data, _address = server.recvfrom(4096)
+            # After receiving the package, it will be selected if it will be lost (for testing in a LAN sake)
+            if randint(0, 100) <= _PACKAGE_LOSS:
+                raise socket.timeout
 
             # If a package has arrived
             if _data:
@@ -94,7 +101,7 @@ def handler():
             # If there are packages to be sent
             if _packages:
                 # Index cannot be greater than number of packages
-                _max_index = min(_confirmed_index + _window_size, _chunk_size)
+                _max_index = min(_confirmed_index + _WINDOW_SIZE, _chunk_size)
                 for x in range(_unconfirmed_index, _max_index):
                     # Update last sent package index
                     _unconfirmed_index += 1
@@ -109,13 +116,12 @@ def handler():
                 server.settimeout(None)
                 _unconfirmed_index = 0
                 _confirmed_index = 0
-                _window_size = 5
 
         # If timeout has finished
         except socket.timeout:
             _data = None
             # Index cannot be greater than number of packages
-            _max_index = min(_confirmed_index + _window_size, _chunk_size)
+            _max_index = min(_confirmed_index + _WINDOW_SIZE, _chunk_size)
             # Update _unconfirmed_index with last sent package
             _unconfirmed_index = _max_index
             # If the resent didn't reached it's max attempts number, the transmitter will send the window
@@ -131,23 +137,40 @@ def handler():
                 server.settimeout(None)
                 _unconfirmed_index = 0
                 _confirmed_index = 0
-                _window_size = 5
                 print 'Max number of window re-transmit attempts was reached'
 
 
-def _set_port():
-    """Define the port that will be used for communication."""
-
+def _user_input():
+    """Print the transmitter command line and parse the input from user."""
     while True:
-        _port = raw_input("transmitter>")
-        try:
-            _port = int(_port)  # verify if port is valid int
-            if _port < 0:
-                raise ValueError
-        except ValueError:
-            print "Invalid port."
+        _command = raw_input("transmitter>").split()
+        if len(_command) is 4:
+            try:
+                _port = int(_command[0])  # verify if port is a valid positive int
+                if _port < 0:
+                    print "Invalid port."
+                    raise ValueError
+                _CWnd = int(_command[1])  # verify if CWnd is a valid positive int
+                if _CWnd <= 0:
+                    print "Invalid window size. Remainder: It must be bigger than 0"
+                    raise ValueError
+                _pl = int(_command[2])  # verify if package loss is an int between 0 and 100
+                if _pl < 0:
+                    print "Invalid package loss percentage. Remainder: It must be a number between 0 and 100"
+                    raise ValueError
+                _pc = int(_command[3])  # verify if package corruption is an int between 0 and 100
+                if _pc < 0:
+                    print "Invalid package corruption percentage. Remainder: It must be a number between 0 and 100"
+                    raise ValueError
+            except ValueError:
+                pass
+            else:
+                return _port, _CWnd, _pl, _pc
         else:
-            return _port
+            _command = "".join(str(c) for c in _command)
+            if _command == "exit" or _command == "quit":  # input command to end process
+                exit(0)  # exit the program
+            print "Incorrect input. Input must be: <Port> <Window size> <Package loss> <Package corruption>"
 
 
 if __name__ == "__main__":
@@ -158,17 +181,17 @@ if __name__ == "__main__":
 
     # this will force the user to choose a correct, non used port to serve the transmitter
     while not _server_open:
-        port = _set_port()
+        _port, _WINDOW_SIZE, _PACKAGE_LOSS, _PACKAGE_CORRUPTION = _user_input()
 
         try:
             # Bind the socket to the port
-            server_address = ('', port)  # ip address is '' so all interfaces will be used
+            server_address = ('', _port)  # ip address is '' so all interfaces will be used
             server.bind(server_address)
             _server_open = True
         except socket.error, exc:
             if 10048 in exc:
                 print "Port is already being used, please, choose another one"
 
-    print "transmitter is running on port {}...".format(port)
+    print "transmitter is running on port {}...".format(_port)
     # Loop to serve the socket server
     handler()
