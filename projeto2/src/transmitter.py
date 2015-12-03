@@ -149,14 +149,23 @@ def _set_port():
 
 
 if __name__ == "__main__":
-    port = _set_port()
     # Create a UDP socket
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # Flag used to show that the users's input is correct and the transmitter is on
+    _server_open = False
 
-    # Bind the socket to the port
-    server_address = ('', port)  # ip address is '' so all interfaces will be used
+    # this will force the user to choose a correct, non used port to serve the transmitter
+    while not _server_open:
+        port = _set_port()
+
+        try:
+            # Bind the socket to the port
+            server_address = ('', port)  # ip address is '' so all interfaces will be used
+            server.bind(server_address)
+        except socket.error, exc:
+            if 10048 in exc:
+                print "Port is already being used, please, choose another one"
+
     print "transmitter is running on port {}...".format(port)
-    server.bind(server_address)
-
     # Loop to serve the socket server
     handler()
