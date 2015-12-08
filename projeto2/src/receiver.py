@@ -64,7 +64,7 @@ if __name__ == '__main__':
             handshake = True
             handshake_attempts = 0
             max_handshake_attempts = 50
-            SOCK.settimeout(0.5)
+            SOCK.settimeout(3)
 
             print "receiver requesting to transmitter({}:{}) for file {}".format(hostname, port, file_name)
             while handshake:
