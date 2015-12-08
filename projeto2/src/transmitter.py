@@ -26,14 +26,15 @@ _PACKAGE_CORRUPTION = 0
 
 def handler():
     _WINDOW_SIZE = 0
+    _chunk_size = 0
     # Boolean that verifies if a file is being sent or if server is idle
     _sending_files = False
     # Array that contains unconfirmed packets to be sent
     _packages = []
     # Index of last sent package but not confirmed yet
-    _unconfirmed_index = 0
+    _unconfirmed_index = -1
     # Index of last confirmed package
-    _confirmed_index = 0
+    _confirmed_index = -1
     # How many times the same window was re-sent
     _resents = 0
     # Flag used to show the correct outcome of the file request
@@ -47,8 +48,8 @@ def handler():
             _data, _address = server.recvfrom(4096)
 
             # After receiving the package, it will be selected if it will be lost (for testing in a LAN sake)
-            #if randint(0, 100) < _PACKAGE_LOSS:
-            #    raise socket.timeout
+            if randint(0, 100) < _PACKAGE_LOSS:
+                raise socket.timeout
 
             # If a package has arrived
             if _data:
@@ -92,12 +93,14 @@ def handler():
                 if _package.package_type == pf.TYPE_ACK and _package.seq_number > 0:
                     _resents = 0
                     _old_confirmed_index = _confirmed_index
-                    _confirmed_index = int(_package.seq_number) + 1
+                    _confirmed_index = int(_package.seq_number)
                     # If it is not negative, remove confirmed packages from _packages
                     if (_confirmed_index - _old_confirmed_index) > 0:
                         # remove confirmed packages from list
                         for x in range(0, _confirmed_index - _old_confirmed_index):
                             _packages.pop(0)
+                        # increase the size of the window (Additive Increase Multiplicative Decrease)
+                        _WINDOW_SIZE += 1
                     # Else, an old ACK has arrived and it doesn't update
                     else:
                         _confirmed_index = _old_confirmed_index
@@ -105,7 +108,7 @@ def handler():
             # If there are packages to be sent
             if _packages:
                 # Index cannot be greater than number of packages
-                _max_index = min(_confirmed_index + _WINDOW_SIZE, _chunk_size)
+                _max_index = min(_confirmed_index + _WINDOW_SIZE, _chunk_size - 1)
                 for x in range(_unconfirmed_index, _max_index):
                     # Update last sent package index
                     _unconfirmed_index += 1
@@ -118,19 +121,23 @@ def handler():
                 # Prepares server for new REQUEST
                 _sending_files = False
                 server.settimeout(None)
-                _unconfirmed_index = 0
-                _confirmed_index = 0
+                _unconfirmed_index = -1
+                _confirmed_index = -1
 
         # If timeout has finished
         except socket.timeout:
+            # Reduce the size of the window (Additive Increase Multiplicative Decrease)
+            if _WINDOW_SIZE > 1:
+                _WINDOW_SIZE /= 2
             # Index cannot be greater than number of packages
-            _max_index = min(_confirmed_index + _WINDOW_SIZE, _chunk_size)
+            _max_index = min(_confirmed_index + _WINDOW_SIZE, _chunk_size - 1)
             # Update _unconfirmed_index with last sent package
             _unconfirmed_index = _max_index
             # If the resent didn't reached it's max attempts number, the transmitter will send the window
             if _resents < _MAX_ATTEMPTS:
                 _resents += 1
-                print 'timed out, packages from {} to {} will be resent'.format(_confirmed_index, _max_index - 1)
+                print 'timed out, packages from {} to {} will be resent ' \
+                      'and window size updated to {}'.format(_confirmed_index, _max_index, _WINDOW_SIZE)
                 for x in range(_confirmed_index, _max_index):
                     server.sendto(_packages[x - _confirmed_index].to_string(), _address)
                     # Binario >> s.sendto(_packages.pop(x - _confirmed_index).pack(), _address)
@@ -138,16 +145,19 @@ def handler():
             else:
                 _sending_files = False
                 server.settimeout(None)
-                _unconfirmed_index = 0
-                _confirmed_index = 0
+                _unconfirmed_index = -1
+                _confirmed_index = -1
                 print 'Max number of window re-transmit attempts was reached'
 
 
 def _user_input():
     """Print the transmitter command line and parse the input from user."""
-    print "Enter the port number, the default window size (optional),"
-    print "the loss percentage from 0 to 100 (optional) and"
-    print "the package corruption percentage from 0 to 100 (optional)."
+
+    print "Enter the server PORT NUMBER and optional arguments"
+    print "Input is: <Port> <Window size = 5> " \
+        "<Package loss percentage = 0> " \
+        "<Package corruption percentage = 0>"
+
     while True:
         _command = raw_input("transmitter>").split()
         if 0 < len(_command) <= 4:

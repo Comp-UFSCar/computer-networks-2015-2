@@ -133,7 +133,7 @@ class ReliableUDP(object):
 
 
 def create_ack(_package_number):
-    _payload = 'ACK'
+    _payload = 'ACK ' + str(_package_number)
     return ReliableUDP(_seq_number=_package_number, _payload=_payload, _package_type=TYPE_ACK)
 
 

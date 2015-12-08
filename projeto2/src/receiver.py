@@ -144,7 +144,8 @@ if __name__ == '__main__':
                                 _package = pf.create_ack(_expected_package)
                                 _expected_package += 1
                             else:
-                                _package = pf.create_ack(_expected_package)
+                                # Send last confirmed package ack
+                                _package = pf.create_ack(_expected_package - 1)
 
                             SOCK.sendto(_package.to_string(), (hostname, port))
                             # Binario >> SOCK.sendto(_package.pack(), (hostname, port))
