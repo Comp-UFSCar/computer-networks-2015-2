@@ -16,7 +16,7 @@ SOCK = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 """socket: Socket using UDP protocol."""
 RECEIVED_FILES_DIR = "received_files/"
 """str: Folder where files will be created."""
-_MAX_HANDSHAKE_ATTEMPTS = 50
+_MAX_ATTEMPTS = 10
 """int: Maximum number of times that connection mat try to handshake"""
 
 
@@ -63,8 +63,8 @@ if __name__ == '__main__':
             timed_out = False
             # Starting handshake with server
             handshake = True
-            handshake_attempts = 0
-            SOCK.settimeout(3)
+            _attempts = 0
+            SOCK.settimeout(1)
 
             print "receiver requesting to transmitter({}:{}) for file {}".format(hostname, port, file_name)
             while handshake:
@@ -76,9 +76,9 @@ if __name__ == '__main__':
                     _data, _address = SOCK.recvfrom(4096)
                 except socket.timeout:
                     sys.stdout.flush()
-                    sys.stdout.write("Attempt {} out of {}. \r".format(handshake_attempts, _MAX_HANDSHAKE_ATTEMPTS))
+                    sys.stdout.write("Attempt {} out of {}. \r".format(_attempts, _MAX_ATTEMPTS))
                     _data = None
-                    handshake_attempts += 1
+                    _attempts += 1
 
                 if _data is not None:
                     _package = pf.ReliableUDP(_data)
@@ -98,7 +98,7 @@ if __name__ == '__main__':
                             # Binario >> SOCK.sendto(_package.pack(), _address)
                             # DATA-ACK was sent
                             handshake = False
-                elif handshake_attempts > _MAX_HANDSHAKE_ATTEMPTS:
+                elif _attempts > _MAX_ATTEMPTS:
                     print "Request timed out."
                     handshake = False
                     timed_out = True
@@ -127,9 +127,20 @@ if __name__ == '__main__':
                             communicating = True
 
                     try:
+                        _attempts = 0
                         # Receive all chunks and append it on list
                         while communicating:
-                            _data, _address = SOCK.recvfrom(4096)
+                            try:
+                                _data, _address = SOCK.recvfrom(4096)
+                            except socket.timeout:
+                                if _attempts < _MAX_ATTEMPTS:
+                                    _attempts += 1
+                                    print "transmitter requests package {} again".format(_expected_package - 1)
+                                    _package = pf.create_ack(_expected_package - 1)
+                                    SOCK.sendto(_package.to_string(), (hostname, port))
+                                else:
+                                    raise socket.error
+
                             _package = pf.ReliableUDP(_data)
                             if int(_package.seq_number) == _expected_package:
                                 # Updates condition to last package (If it contains FYN flag)
@@ -142,6 +153,7 @@ if __name__ == '__main__':
                                 #     print 'Download progress: {}'.format(_download_percentage)
                                 _package = pf.create_ack(_expected_package)
                                 _expected_package += 1
+                                _attempts = 0
                             else:
                                 # Send last confirmed package ack
                                 _package = pf.create_ack(_expected_package - 1)
@@ -155,7 +167,7 @@ if __name__ == '__main__':
                         else:
                             print "...file could not be written."
 
-                    except socket.timeout:
+                    except socket.error:
                         print "the socket has timed-out while receiving the file {}, " \
                               "please, try again later".format(file_name)
 

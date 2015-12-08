@@ -38,9 +38,8 @@ def read_file(file_name):
 
     # Calculate number of chunks based on file_size
     num_of_chunks = len(raw_data) / _CHUNK_SIZE
-    if len(raw_data) % num_of_chunks:
+    if num_of_chunks > 0 and len(raw_data) % num_of_chunks:
         num_of_chunks += 1
-
     # Create list containing pieces of raw_data using chunk_size to divide it
     chunks = []
     for i in range(0, len(raw_data) + 1, _CHUNK_SIZE):
