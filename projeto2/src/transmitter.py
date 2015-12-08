@@ -103,7 +103,8 @@ def handler():
                     if (_confirmed_index - _old_confirmed_index) > 0:
                         # remove confirmed packages from list
                         for x in range(0, _confirmed_index - _old_confirmed_index):
-                            _packages.pop(0)
+                            if _number_of_chunks > 1:
+                                _packages.pop(0)
                         # increase the size of the window (Additive Increase Multiplicative Decrease)
                         _window_size += 1
                     # Else, an old ACK has arrived and it doesn't update
@@ -139,13 +140,22 @@ def handler():
             # Update _unconfirmed_index with last sent package
             _unconfirmed_index = _max_index
             # If the resent didn't reached it's max attempts number, the transmitter will send the window
-            if _resents < _MAX_ATTEMPTS:
+            if _resents < _MAX_ATTEMPTS and _number_of_chunks > 1:
                 _resents += 1
                 print 'Socket timed out!     Packages from {} to {} will be resent and window size reduced' \
                       ' to {}'.format(_confirmed_index, _max_index, _window_size)
                 for x in range(_confirmed_index, _max_index):
                     server.sendto(_packages[x - _confirmed_index].to_string(), _address)
                     # Binario >> s.sendto(_packages.pop(x - _confirmed_index).pack(), _address)
+            # File is completely sent in first package.
+            elif _number_of_chunks == 1:
+                _packages = None
+                _sending_files = False
+                server.settimeout(None)
+                _unconfirmed_index = -1
+                _confirmed_index = -1
+                print "transmitter successfully sent file '{}' to receiver({})".format(_file_name, _address)
+                pass
             # IF the maximum number of attempts was reached, the transmitter gives up and wait for another file request
             else:
                 _sending_files = False
