@@ -13,6 +13,12 @@ TYPE_ACK = 0
 TYPE_DATA = 1
 
 
+class corrupted_package(Exception):
+
+    def __init__(self):
+        pass
+
+
 class ReliableUDP(object):
 
     __flag_syn = None
@@ -25,7 +31,6 @@ class ReliableUDP(object):
     def __init__(self, _from_string=None, _seq_number=None, _payload=None, _package_type=None):
 
         if _from_string is not None:
-            #print _from_string[0:60]
             __lines = str(_from_string).split("\n", 5)
             self.package_type = int(__lines[0].split()[1])
             self.flag_syn = bool(__lines[1].split()[1] == 'True')
@@ -35,7 +40,7 @@ class ReliableUDP(object):
             self.payload = __lines[5]
 
             if checksum.verify(self.payload, _checksum) is False:
-                print "Packet is corrupt"
+                raise corrupted_package
 
         """ Binario
         if _from_string is not None:
@@ -44,7 +49,7 @@ class ReliableUDP(object):
              self.seq_number, _checksum, self.payload) = struct.unpack('!h??QH'+_payload_size+'s', _from_string)
 
             if checksum.verify(self.payload, _checksum) is False:
-                print "Packet is corrupt"
+                raise corrupted_package
         """
 
         if _seq_number is not None:

@@ -16,6 +16,8 @@ SOCK = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 """socket: Socket using UDP protocol."""
 RECEIVED_FILES_DIR = "received_files/"
 """str: Folder where files will be created."""
+_MAX_HANDSHAKE_ATTEMPTS = 50
+"""int: Maximum number of times that connection mat try to handshake"""
 
 
 def _user_input():
@@ -40,7 +42,6 @@ def _user_input():
                 exit(0)  # exit the program
             print "Incorrect input. Input must be: <hostname> <port> <file_name>"
 
-
 if __name__ == '__main__':
     """Receiver main loop"""
     # Boolean that verifies while receiver is being served
@@ -63,7 +64,6 @@ if __name__ == '__main__':
             # Starting handshake with server
             handshake = True
             handshake_attempts = 0
-            max_handshake_attempts = 50
             SOCK.settimeout(3)
 
             print "receiver requesting to transmitter({}:{}) for file {}".format(hostname, port, file_name)
@@ -76,7 +76,7 @@ if __name__ == '__main__':
                     _data, _address = SOCK.recvfrom(4096)
                 except socket.timeout:
                     sys.stdout.flush()
-                    sys.stdout.write("Attempt {} out of {}. \r".format(handshake_attempts, max_handshake_attempts))
+                    sys.stdout.write("Attempt {} out of {}. \r".format(handshake_attempts, _MAX_HANDSHAKE_ATTEMPTS))
                     _data = None
                     handshake_attempts += 1
 
@@ -98,7 +98,7 @@ if __name__ == '__main__':
                             # Binario >> SOCK.sendto(_package.pack(), _address)
                             # DATA-ACK was sent
                             handshake = False
-                elif handshake_attempts > max_handshake_attempts:
+                elif handshake_attempts > _MAX_HANDSHAKE_ATTEMPTS:
                     print "Request timed out."
                     handshake = False
                     timed_out = True
@@ -107,7 +107,6 @@ if __name__ == '__main__':
                 _chunk_size = 0
                 chunks = []
 
-                # TODO: move this area of code back into the above loop to allow re-send of the final handshake
                 if "ERROR" in total_chunks:
                     print "...{}".format(" ".join(total_chunks))
                 else:

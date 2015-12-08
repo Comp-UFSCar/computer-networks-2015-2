@@ -25,8 +25,10 @@ _PACKAGE_CORRUPTION = 0
 
 
 def handler():
-    _WINDOW_SIZE = 0
-    _chunk_size = 0
+    # Size of the window. It changes according to received packages and timeouts
+    _window_size = 0
+    # Number of chunks from the file being transferred
+    _number_of_chunks = 0
     # Boolean that verifies if a file is being sent or if server is idle
     _sending_files = False
     # Array that contains unconfirmed packets to be sent
@@ -47,15 +49,17 @@ def handler():
             # Receive new REQUEST or ACK
             _data, _address = server.recvfrom(4096)
 
-            # After receiving the package, it will be selected if it will be lost (for testing in a LAN sake)
+            # After receiving the package, it will be selected if it will be lost or corrupt(for testing in a LAN sake)
             if randint(0, 100) < _PACKAGE_LOSS:
                 raise socket.timeout
+
+            if randint(0, 100) < _PACKAGE_CORRUPTION:
+                raise pf.corrupted_package
 
             # If a package has arrived
             if _data:
                 # Build received package
                 _package = pf.ReliableUDP(_data)
-
                 # If package contains new REQUEST and no other request is being served
                 if not _sending_files \
                         and _package.flag_syn \
@@ -78,14 +82,15 @@ def handler():
                     else:  # send back number of chunks that will be sent
                         _file_found = True
                         _packages = pf.pack_chunks(_chunks)
-                        _chunk_size = len(_chunks)
+                        _number_of_chunks = len(_chunks)
+                        print "transmitter created {} chunks".format(_number_of_chunks)
                         # Response package contains the number of chunks
-                        _package.payload = str(_chunk_size)
+                        _package.payload = str(_number_of_chunks)
                         server.sendto(_package.to_string(), _address)
                         # Binario >> s.sendto(_package.pack(), _address)
                         _sending_files = True
                         # Update window size to default
-                        _WINDOW_SIZE = _DEFAULT_WINDOW_SIZE
+                        _window_size = _DEFAULT_WINDOW_SIZE
                         # Set timeout to 1 second
                         server.settimeout(1)
 
@@ -100,7 +105,7 @@ def handler():
                         for x in range(0, _confirmed_index - _old_confirmed_index):
                             _packages.pop(0)
                         # increase the size of the window (Additive Increase Multiplicative Decrease)
-                        _WINDOW_SIZE += 1
+                        _window_size += 1
                     # Else, an old ACK has arrived and it doesn't update
                     else:
                         _confirmed_index = _old_confirmed_index
@@ -108,7 +113,7 @@ def handler():
             # If there are packages to be sent
             if _packages:
                 # Index cannot be greater than number of packages
-                _max_index = min(_confirmed_index + _WINDOW_SIZE, _chunk_size - 1)
+                _max_index = min(_confirmed_index + _window_size, _number_of_chunks - 1)
                 for x in range(_unconfirmed_index, _max_index):
                     # Update last sent package index
                     _unconfirmed_index += 1
@@ -127,17 +132,17 @@ def handler():
         # If timeout has finished
         except socket.timeout:
             # Reduce the size of the window (Additive Increase Multiplicative Decrease)
-            if _WINDOW_SIZE > 1:
-                _WINDOW_SIZE /= 2
+            if _window_size > 1:
+                _window_size /= 2
             # Index cannot be greater than number of packages
-            _max_index = min(_confirmed_index + _WINDOW_SIZE, _chunk_size - 1)
+            _max_index = min(_confirmed_index + _window_size, _number_of_chunks - 1)
             # Update _unconfirmed_index with last sent package
             _unconfirmed_index = _max_index
             # If the resent didn't reached it's max attempts number, the transmitter will send the window
             if _resents < _MAX_ATTEMPTS:
                 _resents += 1
-                print 'timed out, packages from {} to {} will be resent ' \
-                      'and window size updated to {}'.format(_confirmed_index, _max_index, _WINDOW_SIZE)
+                print 'Socket timed out!     Packages from {} to {} will be resent and window size reduced' \
+                      ' to {}'.format(_confirmed_index, _max_index, _window_size)
                 for x in range(_confirmed_index, _max_index):
                     server.sendto(_packages[x - _confirmed_index].to_string(), _address)
                     # Binario >> s.sendto(_packages.pop(x - _confirmed_index).pack(), _address)
@@ -148,6 +153,10 @@ def handler():
                 _unconfirmed_index = -1
                 _confirmed_index = -1
                 print 'Max number of window re-transmit attempts was reached'
+
+        except pf.corrupted_package:
+            print "transmitter received corrupted package"
+            pass
 
 
 def _user_input():
