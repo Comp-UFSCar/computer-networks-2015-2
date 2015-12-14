@@ -7,6 +7,7 @@ to the receiver using a reliable UDP protocol.
 """
 
 import socket
+import sys
 
 from toolbox import file_handler
 from toolbox import package_factory as pf
@@ -26,7 +27,7 @@ _PACKAGE_CORRUPTION = 0
 
 def handler():
     # Size of the window. It changes according to received packages and timeouts
-    _window_size = 0
+    _window_size = _DEFAULT_WINDOW_SIZE
     # Number of chunks from the file being transferred
     _number_of_chunks = 0
     # Boolean that verifies if a file is being sent or if server is idle
@@ -46,6 +47,10 @@ def handler():
     while True:
 
         try:
+            #Show window size
+            sys.stdout.flush()
+            sys.stdout.write("Window Size: %d   \r" % _window_size)
+
             # Receive new REQUEST or ACK
             _data, _address = server.recvfrom(4096)
 
